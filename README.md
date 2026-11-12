@@ -1,4 +1,4 @@
-# 🐾 毛茸茸圆桌 · Fluffy Roundtable
+﻿# 🐾 毛茸茸圆桌 · Fluffy Roundtable
 
 > **「在这儿刷知乎。刷完乱了，就问它们。」**
 > *——它知道你刚才看了什么，也一直都在。*
@@ -45,16 +45,16 @@
 ## 🖼️ 视觉概念图
 
 ### 主视觉：篝火圆桌 · 四小只开会
-![篝火圆桌](assets/images/01-campfire-roundtable.png)
+![篝火圆桌](assets/images/01-campfire-roundtable.webp)
 
 ### 头脑特工队式大光幕 × 长条形知乎帖子围炉开会
-![大光幕围炉](assets/images/03-screen-meeting.png)
+![大光幕围炉](assets/images/03-screen-meeting.webp)
 
 ### 经典总部半背影视角变体
-![半背影视角](assets/images/04-hq-backview.png)
+![半背影视角](assets/images/04-hq-backview.webp)
 
 ### 情绪共鸣副图：雪地星尘并排仰望
-![雪地星尘](assets/images/02-snow-stardust.png)
+![雪地星尘](assets/images/02-snow-stardust.webp)
 
 ---
 
