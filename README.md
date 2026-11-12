@@ -1,4 +1,4 @@
-﻿# 🐾 毛茸茸圆桌 · Fluffy Roundtable
+# 🐾 毛茸茸圆桌 · Fluffy Roundtable
 
 > **「在这儿刷知乎。刷完乱了，就问它们。」**
 > *——它知道你刚才看了什么，也一直都在。*
@@ -44,10 +44,10 @@
 
 ## 🖼️ 视觉概念图
 
-### 主视觉：篝火圆桌 · 四小只开会
+### 初版概念稿：篝火圆桌 · 四小只开会（英文便签）
 ![篝火圆桌](assets/images/01-campfire-roundtable.webp)
 
-### 头脑特工队式大光幕 × 长条形知乎帖子围炉开会
+### 主视觉：头脑特工队式大光幕 × 长条形知乎帖子围炉开会（中文知乎帖子版）
 ![大光幕围炉](assets/images/03-screen-meeting.webp)
 
 ### 经典总部半背影视角变体
@@ -90,11 +90,11 @@ fluffy-roundtable/
 │   ├── 01-知乎圈子宣传通稿与配图提示词全集.md
 │   └── 02-项目策划与技术架构全案.md
 └── assets/
-    ├── images/           # 概念图与产品视觉
-    │   ├── 01-campfire-roundtable.png
-    │   ├── 02-snow-stardust.png
-    │   ├── 03-screen-meeting.png
-    │   └── 04-hq-backview.png
+    ├── images/           # 概念图与产品视觉（1600×900 WebP）
+    │   ├── 01-campfire-roundtable.webp
+    │   ├── 02-snow-stardust.webp
+    │   ├── 03-screen-meeting.webp
+    │   └── 04-hq-backview.webp
     └── ip/               # 知乎官方刘看山 IP 素材
         ├── kanshan-three-views.jpg
         ├── kanshan-3q-white-bg.jpg
