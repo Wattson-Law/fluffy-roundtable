@@ -1,0 +1,38 @@
+# 依赖
+node_modules/
+.pnpm-store/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 构建产物
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# 环境与密钥（绝不入库）
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 本地缓存与日志
+.cache/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+
+# 临时文件
+tmp/
+*.tmp
