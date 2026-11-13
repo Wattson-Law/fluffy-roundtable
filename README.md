@@ -42,19 +42,41 @@
 
 ---
 
-## 🖼️ 视觉概念图
+## 🖼️ Image2 角色三视图、透明立绘与概念视觉
 
-### 初版概念稿：篝火圆桌 · 四小只开会（英文便签）
+### 雪地围巾定妆参考 & 四角色 Image2 三视图（2048 × 1152）
+![四动物雪地围巾参考图](assets/turnarounds/snow-scarf-4animals-ref.jpg)
+
+![刘看山 Image2 三视图](assets/turnarounds/liukanshan-turnaround-sheet.png)
+
+![呼噜猫 Image2 三视图](assets/turnarounds/ginger-cat-turnaround-sheet.png)
+
+![考据猫头鹰 Image2 三视图](assets/turnarounds/owl-turnaround-sheet.png)
+
+![护短柴犬 Image2 三视图](assets/turnarounds/shiba-turnaround-sheet.png)
+
+### 12 张正/侧/背透明 PNG 精灵实测（已去背可直接用于前端多视角动效）
+![Image2 角色立绘深色底实测](assets/sprites/verify-image2-on-dark.png)
+
+> 原始三视图档案位于 [`assets/turnarounds/`](assets/turnarounds/)，经 Edge Flood-Fill 精抠并去水印后的 12 张透明 PNG（`{kanshan,cat,owl,shiba}-{front,side,back}.png`，高 `680px`）位于 [`assets/sprites/`](assets/sprites/)。
+
+### 初版概念稿与大光幕设定
 ![篝火圆桌](assets/images/01-campfire-roundtable.webp)
 
-### 主视觉：头脑特工队式大光幕 × 长条形知乎帖子围炉开会（中文知乎帖子版）
 ![大光幕围炉](assets/images/03-screen-meeting.webp)
 
-### 经典总部半背影视角变体
 ![半背影视角](assets/images/04-hq-backview.webp)
 
-### 情绪共鸣副图：雪地星尘并排仰望
 ![雪地星尘](assets/images/02-snow-stardust.webp)
+
+---
+
+## 🎮 前端动效交互原型（浏览器打开即体验）
+
+| 原型文件 | 内容 |
+| :--- | :--- |
+| [`prototypes/fluffy-roundtable-5step-demo.html`](prototypes/fluffy-roundtable-5step-demo.html) | 5 步连贯交互动画原型（侧边栏待机 → 唤醒 → 跃出开门 → 动物登场 → 高对比度陪聊） |
+| [`prototypes/fluffy-roundtable-galgame-v1.html`](prototypes/fluffy-roundtable-galgame-v1.html) | 视觉剧场初版（含刘看山浏览时长/篇数劝休播报、3 套温馨背景切换、角色差分反应与分支选项） |
 
 ---
 
@@ -62,8 +84,12 @@
 
 | 文档 | 内容 |
 | :--- | :--- |
-| [`docs/01-知乎圈子宣传通稿与配图提示词全集.md`](docs/01-知乎圈子宣传通稿与配图提示词全集.md) | 知乎圈子宣传通稿（深夜故事破防版 / 短平快金句版）+ Image 2 全量配图提示词（中英双语，2D 手绘水彩团子风） |
-| [`docs/02-项目策划与技术架构全案.md`](docs/02-项目策划与技术架构全案.md) | 赛事规则与评分权重对齐、双重痛点破题、四大功能模块、知乎开放平台全量 API 盘点（含配额与 OAuth 协议避坑）、技术栈选型与缓存策略、Claude 审阅问题清单 |
+| [`docs/01-知乎圈子宣传通稿与配图提示词全集.md`](docs/01-知乎圈子宣传通稿与配图提示词全集.md) | 知乎圈子宣传通稿与早期 2D 手绘水彩概念图提示词 |
+| [`docs/02-项目策划与技术架构全案.md`](docs/02-项目策划与技术架构全案.md) | 早期赛事策划、知乎开放平台 API 盘点与技术栈调研 |
+| [`docs/03-毛茸茸圆桌-产品设计与技术实现全案-for-Claude.md`](docs/03-毛茸茸圆桌-产品设计与技术实现全案-for-Claude.md) | 一体化 Web 架构全案（AiWorks 无外置库兼容、纯真实知乎 API 数据约束与前后端施工蓝图） |
+| [`docs/04-UI交互预览与前端动效实现指南.md`](docs/04-UI交互预览与前端动效实现指南.md) | 界面视觉问题诊断、Image2 三视图与 12 张正/侧/背透明精灵素材表、Framer Motion 五段式动效时序 |
+| [`docs/05-五步动画分镜与三视图生图提示词.md`](docs/05-五步动画分镜与三视图生图提示词.md) | 侧边栏到聊天框 5 步分镜提示词 + 四动物三视图（正视/侧视/背视）全套生图提示词 |
+| [`docs/06-Galgame差分立绘与温馨背景及劝休指南.md`](docs/06-Galgame差分立绘与温馨背景及劝休指南.md) | 合规降敏版温馨背景提示词（3 方案）、同姿三态差分立绘写法与刘看山劝休播报规范 |
 
 ---
 
@@ -88,8 +114,27 @@ fluffy-roundtable/
 ├── README.md
 ├── docs/
 │   ├── 01-知乎圈子宣传通稿与配图提示词全集.md
-│   └── 02-项目策划与技术架构全案.md
+│   ├── 02-项目策划与技术架构全案.md
+│   ├── 03-毛茸茸圆桌-产品设计与技术实现全案-for-Claude.md
+│   ├── 04-UI交互预览与前端动效实现指南.md
+│   ├── 05-五步动画分镜与三视图生图提示词.md
+│   └── 06-Galgame差分立绘与温馨背景及劝休指南.md
+├── prototypes/
+│   ├── fluffy-roundtable-5step-demo.html
+│   └── fluffy-roundtable-galgame-v1.html
 └── assets/
+    ├── turnarounds/      # Image2 四角色原版三视图 (2048×1152) & 雪地围巾定妆参考
+    │   ├── snow-scarf-4animals-ref.jpg
+    │   ├── liukanshan-turnaround-sheet.png
+    │   ├── ginger-cat-turnaround-sheet.png
+    │   ├── owl-turnaround-sheet.png
+    │   └── shiba-turnaround-sheet.png
+    ├── sprites/          # 12 张去背多视角透明 PNG（front / side / back）& 深底实测图
+    │   ├── verify-image2-on-dark.png
+    │   ├── kanshan-{front,side,back}.png
+    │   ├── cat-{front,side,back}.png
+    │   ├── owl-{front,side,back}.png
+    │   └── shiba-{front,side,back}.png
     ├── images/           # 概念图与产品视觉（1600×900 WebP）
     │   ├── 01-campfire-roundtable.webp
     │   ├── 02-snow-stardust.webp
