@@ -44,6 +44,16 @@
 
 ## 🖼️ Image2 角色三视图、透明立绘与概念视觉
 
+### 界面交互实景预览 & 温暖小屋舞台背景（Image 2）
+
+![正脸扒右边框待机预览](assets/previews/ui-front-grip-fox-v1.png)
+
+![久未互动伸手挥爪打招呼预览](assets/previews/ui-wave-greet-fox-v1.png)
+
+![烟囱木屋聊天室 v2 视觉探索稿](assets/previews/cabin-chat-room-v2.png)
+
+![深夜壁炉茶屋无字舞台背景](assets/backgrounds/cabin-fireplace-bg.png)
+
 ### 雪地围巾定妆参考 & 四角色 Image2 三视图（2048 × 1152）
 ![四动物雪地围巾参考图](assets/turnarounds/snow-scarf-4animals-ref.jpg)
 
@@ -77,6 +87,7 @@
 | :--- | :--- |
 | [`prototypes/fluffy-roundtable-5step-demo.html`](prototypes/fluffy-roundtable-5step-demo.html) | 5 步连贯交互动画原型（侧边栏待机 → 唤醒 → 跃出开门 → 动物登场 → 高对比度陪聊） |
 | [`prototypes/fluffy-roundtable-galgame-v1.html`](prototypes/fluffy-roundtable-galgame-v1.html) | 视觉剧场初版（含刘看山浏览时长/篇数劝休播报、3 套温馨背景切换、角色差分反应与分支选项） |
+| [`prototypes/fluffy-roundtable-cottage-chat.html`](prototypes/fluffy-roundtable-cottage-chat.html) | **2026-11-16 拉门小屋聊天室**：左半真实网页压暗 + 刘看山拉门迎客 + 烟囱暖木屋立绘配气泡 + AI 时代学习反焦虑群聊剧本 |
 
 ---
 
@@ -89,7 +100,8 @@
 | [`docs/03-毛茸茸圆桌-产品设计与技术实现全案-for-Claude.md`](docs/03-毛茸茸圆桌-产品设计与技术实现全案-for-Claude.md) | 一体化 Web 架构全案（AiWorks 无外置库兼容、纯真实知乎 API 数据约束与前后端施工蓝图） |
 | [`docs/04-UI交互预览与前端动效实现指南.md`](docs/04-UI交互预览与前端动效实现指南.md) | 界面视觉问题诊断、Image2 三视图与 12 张正/侧/背透明精灵素材表、Framer Motion 五段式动效时序 |
 | [`docs/05-五步动画分镜与三视图生图提示词.md`](docs/05-五步动画分镜与三视图生图提示词.md) | 侧边栏到聊天框 5 步分镜提示词 + 四动物三视图（正视/侧视/背视）全套生图提示词 |
-| [`docs/06-Galgame差分立绘与温馨背景及劝休指南.md`](docs/06-Galgame差分立绘与温馨背景及劝休指南.md) | 合规降敏版温馨背景提示词（3 方案）、同姿三态差分立绘写法与刘看山劝休播报规范 |
+| [`docs/06-Galgame差分立绘与温馨背景及劝休指南.md`](docs/06-Galgame差分立绘与温馨背景及劝休指南.md) | 合规降敏版温馨背景提示词（3 方案 + 方案 A 成图）、同姿三态差分立绘写法与刘看山劝休播报规范 |
+| [`docs/07-侧边扒框互动与拉门小屋聊天室设计进度.md`](docs/07-侧边扒框互动与拉门小屋聊天室设计进度.md) | **2026-11-16 最新进度**：正脸扒框→挥手预览图集、烟囱小屋 v2 复盘定调、拉门小屋原型与 v3 提示词 |
 
 ---
 
@@ -118,11 +130,19 @@ fluffy-roundtable/
 │   ├── 03-毛茸茸圆桌-产品设计与技术实现全案-for-Claude.md
 │   ├── 04-UI交互预览与前端动效实现指南.md
 │   ├── 05-五步动画分镜与三视图生图提示词.md
-│   └── 06-Galgame差分立绘与温馨背景及劝休指南.md
+│   ├── 06-Galgame差分立绘与温馨背景及劝休指南.md
+│   └── 07-侧边扒框互动与拉门小屋聊天室设计进度.md
 ├── prototypes/
 │   ├── fluffy-roundtable-5step-demo.html
-│   └── fluffy-roundtable-galgame-v1.html
+│   ├── fluffy-roundtable-galgame-v1.html
+│   └── fluffy-roundtable-cottage-chat.html
 └── assets/
+    ├── previews/         # Image 2 界面交互实景预览（2048×1152）
+    │   ├── ui-front-grip-fox-v1.png
+    │   ├── ui-wave-greet-fox-v1.png
+    │   └── cabin-chat-room-v2.png
+    ├── backgrounds/      # 温暖小屋无字舞台背景（2048×1152）
+    │   └── cabin-fireplace-bg.png
     ├── turnarounds/      # Image2 四角色原版三视图 (2048×1152) & 雪地围巾定妆参考
     │   ├── snow-scarf-4animals-ref.jpg
     │   ├── liukanshan-turnaround-sheet.png
