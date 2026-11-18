@@ -1,0 +1,18 @@
+node_modules
+.next
+out
+build
+.env
+.env.local
+.env*.local
+*.log
+.DS_Store
+next-env.d.ts
+tsconfig.tsbuildinfo
+.cache
+.playwright-mcp
+
+# 绘本素材体积较大（约 17MB），受上行带宽限制单独分发
+# 克隆后请从 F:\图片\知乎\ 复制，或见 HANDOVER.md §六
+public/assets/images/*.png
+public/assets/ip/*.jpg
