@@ -1,18 +1,50 @@
+# 依赖
 node_modules
-.next
-out
-build
+node_modules/
+.pnpm-store/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 构建产物
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# 环境与密钥（绝不入库）
 .env
 .env.local
+.env.*
 .env*.local
-*.log
-.DS_Store
-next-env.d.ts
-tsconfig.tsbuildinfo
+!.env.example
+*.pem
+*.key
+
+# 本地缓存与日志
 .cache
+.cache/
 .playwright-mcp
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+
+# 临时文件
+tmp/
+*.tmp
 
 # 绘本素材体积较大（约 17MB），受上行带宽限制单独分发
 # 克隆后请从 F:\图片\知乎\ 复制，或见 HANDOVER.md §六
+# 仓库内已有的等价归档素材见 assets/images 与 assets/ip
 public/assets/images/*.png
 public/assets/ip/*.jpg

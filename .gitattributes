@@ -1,0 +1,11 @@
+# 图片与二进制素材：不做换行转换、不做文本 diff
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.gif  binary
+*.zip  binary
+*.pdf  binary
+
+# Markdown：保持 LF，避免 Windows 换行污染 diff
+*.md text eol=lf

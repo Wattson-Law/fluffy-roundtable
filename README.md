@@ -1,4 +1,4 @@
-# 毛茸茸圆桌 · Fluffy Roundtable
+# 🐾 毛茸茸圆桌 · Fluffy Roundtable
 
 > **在这儿刷知乎。刷完乱了，就问它们。**
 > *它知道你刚才看了什么，也一直都在。*
@@ -38,6 +38,22 @@ npm run smoke                # 全链路冒烟（56 项）
 
 **LLM 为可选增强**：未配置 `LLM_*` 时自动降级为规则引擎，四小只照常开会，Demo 永不白屏。
 
+### 绘本素材（不入 Git）
+
+`public/assets/images/` 与 `public/assets/ip/` 下的 7 个大图受上行带宽限制未入库，缺图不会崩，只是小屋背景与右下角头像裂图。补救方式：
+
+```bash
+# 方式 A：本地素材
+cp "F:\图片\知乎\毛茸茸圆桌会\*.png" public/assets/images/
+unzip -j "F:\图片\知乎\kanshan-three-views.zip" "看山三视图/*.jpg" -d public/assets/ip/
+
+# 方式 B：仓库内已有等价的归档素材
+#   assets/images/*.webp（1600×900 压缩版）
+#   assets/ip/kanshan-*.jpg（同源刘看山三视图）
+```
+
+细节见 [`HANDOVER.md`](HANDOVER.md) §六。
+
 ## 架构要点
 
 - **无数据库**（适配知乎 AiWorks）：服务端仅进程内 TTL 缓存，用户数据全在 `localStorage`
@@ -68,6 +84,19 @@ src/
 │   └── storage.ts                    # localStorage：轨迹 / 手账
 └── components/{zhihu-sim,companion,cabin,journal}/
 ```
+
+## 仓库归档（策划 · 素材 · 原型）
+
+仓库同时保留项目早期的策划全案、Image2 素材与 HTML 动效原型，均不影响 Next.js 应用运行：
+
+| 路径 | 内容 |
+|---|---|
+| [`docs/08-项目介绍与素材索引（原 README 归档）.md`](docs/08-项目介绍与素材索引（原 README 归档）.md) | 完整项目介绍、角色设定与素材索引（原仓库首页） |
+| [`docs/`](docs/) | 01–07：宣传通稿、策划与技术架构全案、UI 动效指南、分镜与三视图提示词、Galgame 差分立绘、11.16 拉门小屋进度 |
+| [`prototypes/`](prototypes/) | 3 个浏览器直接打开的交互动效原型（5 步 Demo / Galgame v1 / 拉门小屋聊天室） |
+| [`assets/`](assets/) | 12 张去背多视角透明 PNG、四角色三视图、界面预览、概念图 WebP、刘看山 IP 素材 |
+
+> `.gitignore` 排除了 `assets/` 以外的构建产物；`assets/` 为策划归档，约 45 MB，`git clone` 时可加 `--filter=blob:none` 或 `--depth=1` 加速。
 
 ## 进度
 
