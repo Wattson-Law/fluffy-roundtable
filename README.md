@@ -8,6 +8,16 @@
 
 ---
 
+## 看一遍这版圆桌 · V6.1
+
+从右下角点一下正在写字的刘看山：窗沿展开成小屋，猫头鹰飞上圆窗，呼噜猫和柴犬先后跑进来。开聊以后，一次只看一位角色；它说完就安静等你读。接不接话、收不收卡，由你决定。
+
+![呼噜猫把话交给考据猫头鹰：旧立绘先退，新立绘再入，气泡留在原处](docs/visual-target-v6.1/media/03-speaker-handoff.gif)
+
+**[下载可点击原型](public/previews/roundtable-v6.1/index.html)**（GitHub 文件页点 **Download raw file**，双击下载的 HTML，无需安装或密钥） · [看 44.5 秒全程演示](docs/visual-target-v6.1/media/walkthrough.mp4) · [看定稿图、透明立绘与可编辑源文件](docs/visual-target-v6.1/README.md)
+
+这是前端和动效的**设计目标**。原型使用两篇本地示例，不连知乎；下方正式应用的真实数据流程没有被替换。
+
 ## 核心体验（五步闭环）
 
 1. **模拟知乎** — 真实热榜 / 站内搜索，点进问题可读真实回答正文、赞同数、权威度与精选评论
@@ -38,7 +48,7 @@ npm run smoke                # 全链路冒烟（56 项）
 
 **LLM 为可选增强**：未配置 `LLM_*` 时自动降级为规则引擎，四小只照常开会，Demo 永不白屏。
 
-### 绘本素材（不入 Git）
+### 正式应用的绘本大图（不含上方已入库的原型素材）
 
 `public/assets/images/` 与 `public/assets/ip/` 下的 7 个大图受上行带宽限制未入库，缺图不会崩，只是小屋背景与右下角头像裂图。补救方式：
 
@@ -93,7 +103,8 @@ src/
 |---|---|
 | [`docs/08-项目介绍与素材索引（原 README 归档）.md`](docs/08-项目介绍与素材索引（原 README 归档）.md) | 完整项目介绍、角色设定与素材索引（原仓库首页） |
 | [`docs/`](docs/) | 01–07：宣传通稿、策划与技术架构全案、UI 动效指南、分镜与三视图提示词、Galgame 差分立绘、11.16 拉门小屋进度 |
-| [`prototypes/`](prototypes/) | 3 个浏览器直接打开的交互动效原型（5 步 Demo / Galgame v1 / 拉门小屋聊天室） |
+| [`docs/visual-target-v6.1/`](docs/visual-target-v6.1/) | 当前交互目标：认可的角色立绘、动效、可重建的单页原型 |
+| [`prototypes/`](prototypes/) | 早期 3 个浏览器直接打开的交互动效原型（5 步 Demo / Galgame v1 / 拉门小屋聊天室） |
 | [`assets/`](assets/) | 12 张去背多视角透明 PNG、四角色三视图、界面预览、概念图 WebP、刘看山 IP 素材 |
 
 > `.gitignore` 排除了 `assets/` 以外的构建产物；`assets/` 为策划归档，约 45 MB，`git clone` 时可加 `--filter=blob:none` 或 `--depth=1` 加速。
@@ -102,4 +113,4 @@ src/
 
 - **Phase 1（P0）** ✅ 真实 API 端到端闭环已跑通
 - **Phase 2（P1）** 待办：OAuth 登录模块、决断卡图片导出
-- **Phase 3（P2）** 待办：AiWorks 公网部署、移动端实测、演示视频
+- **Phase 3（P2）** 待办：AiWorks 公网部署、移动端实测、正式应用演示视频

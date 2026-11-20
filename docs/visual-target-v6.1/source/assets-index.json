@@ -1,0 +1,268 @@
+[
+  {
+    "id": "blank",
+    "file": "assets/小屋/blank.webp",
+    "width": 706,
+    "height": 924,
+    "usage": "独立场景层"
+  },
+  {
+    "id": "atmos",
+    "file": "assets/小屋/atmos.webp",
+    "width": 706,
+    "height": 924,
+    "usage": "独立场景层"
+  },
+  {
+    "id": "room",
+    "file": "assets/小屋/room.webp",
+    "width": 1060,
+    "height": 597,
+    "usage": "独立场景层"
+  },
+  {
+    "id": "table",
+    "file": "assets/小屋/table.webp",
+    "width": 624,
+    "height": 192,
+    "usage": "独立场景层"
+  },
+  {
+    "id": "rail",
+    "file": "assets/小屋/rail.webp",
+    "width": 980,
+    "height": 83,
+    "usage": "独立场景层"
+  },
+  {
+    "id": "runcat0",
+    "file": "assets/入场/runcat0.webp",
+    "width": 540,
+    "height": 253,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "runcat1",
+    "file": "assets/入场/runcat1.webp",
+    "width": 540,
+    "height": 294,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "runcat2",
+    "file": "assets/入场/runcat2.webp",
+    "width": 540,
+    "height": 326,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "runcat3",
+    "file": "assets/入场/runcat3.webp",
+    "width": 386,
+    "height": 453,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "rundog0",
+    "file": "assets/入场/rundog0.webp",
+    "width": 477,
+    "height": 452,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "rundog1",
+    "file": "assets/入场/rundog1.webp",
+    "width": 477,
+    "height": 456,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "rundog2",
+    "file": "assets/入场/rundog2.webp",
+    "width": 464,
+    "height": 426,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "rundog3",
+    "file": "assets/入场/rundog3.webp",
+    "width": 446,
+    "height": 464,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "runowl0",
+    "file": "assets/入场/runowl0.webp",
+    "width": 517,
+    "height": 427,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "runowl1",
+    "file": "assets/入场/runowl1.webp",
+    "width": 540,
+    "height": 287,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "runowl2",
+    "file": "assets/入场/runowl2.webp",
+    "width": 540,
+    "height": 362,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "runowl3",
+    "file": "assets/入场/runowl3.webp",
+    "width": 364,
+    "height": 417,
+    "usage": "飞跑与就位姿势"
+  },
+  {
+    "id": "cat0",
+    "file": "assets/对话/cat0.webp",
+    "width": 356,
+    "height": 400,
+    "usage": "静听或发言立绘"
+  },
+  {
+    "id": "cat1",
+    "file": "assets/对话/cat1.webp",
+    "width": 338,
+    "height": 400,
+    "usage": "静听或发言立绘"
+  },
+  {
+    "id": "owl0",
+    "file": "assets/对话/owl0.webp",
+    "width": 356,
+    "height": 400,
+    "usage": "静听或发言立绘"
+  },
+  {
+    "id": "owl1",
+    "file": "assets/对话/owl1.webp",
+    "width": 366,
+    "height": 400,
+    "usage": "静听或发言立绘"
+  },
+  {
+    "id": "dog0",
+    "file": "assets/对话/dog0.webp",
+    "width": 382,
+    "height": 388,
+    "usage": "静听或发言立绘"
+  },
+  {
+    "id": "dog1",
+    "file": "assets/对话/dog1.webp",
+    "width": 382,
+    "height": 385,
+    "usage": "静听或发言立绘"
+  },
+  {
+    "id": "fox0",
+    "file": "assets/对话/fox0.webp",
+    "width": 381,
+    "height": 400,
+    "usage": "静听或发言立绘"
+  },
+  {
+    "id": "fox1",
+    "file": "assets/对话/fox1.webp",
+    "width": 382,
+    "height": 394,
+    "usage": "静听或发言立绘"
+  },
+  {
+    "id": "ink0",
+    "file": "assets/桌宠/ink0.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "ink1",
+    "file": "assets/桌宠/ink1.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "ink2",
+    "file": "assets/桌宠/ink2.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "ink3",
+    "file": "assets/桌宠/ink3.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "ink4",
+    "file": "assets/桌宠/ink4.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "ink5",
+    "file": "assets/桌宠/ink5.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "wake0",
+    "file": "assets/桌宠/wake0.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "wake1",
+    "file": "assets/桌宠/wake1.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "wake2",
+    "file": "assets/桌宠/wake2.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "wake3",
+    "file": "assets/桌宠/wake3.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "wake4",
+    "file": "assets/桌宠/wake4.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "wake5",
+    "file": "assets/桌宠/wake5.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  },
+  {
+    "id": "wake6",
+    "file": "assets/桌宠/wake6.webp",
+    "width": 260,
+    "height": 273,
+    "usage": "待机落笔与抬头过渡"
+  }
+]

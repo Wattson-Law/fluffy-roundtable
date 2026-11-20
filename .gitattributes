@@ -4,8 +4,14 @@
 *.jpeg binary
 *.webp binary
 *.gif  binary
+*.mp4  binary
 *.zip  binary
 *.pdf  binary
 
 # Markdown：保持 LF，避免 Windows 换行污染 diff
 *.md text eol=lf
+
+# 离线交付页内嵌图片；保留核准版本的字节，不对生成文件显示大段 diff。
+public/previews/roundtable-v6.1/index.html binary linguist-generated=true
+docs/visual-target-v6.1/source/* text eol=lf
+docs/visual-target-v6.1/verify_ui.py text eol=lf
