@@ -8,15 +8,35 @@
 
 ---
 
-**原图与动效直达：** [四位动物的原始三视图](assets/turnarounds/) · [看山从窗沿展开小屋、进入对话（GIF）](docs/visual-target-v6.1/media/01-open.gif) · [猫头鹰发言参考原图](assets/previews/owl-dialogue-02-reference.png) · [原始素材总索引](assets/README.md)。
-
 ## 看一遍这版圆桌 · V6.1
 
-从右下角点一下正在写字的刘看山：窗沿展开成小屋，猫头鹰飞上圆窗，呼噜猫和柴犬先后跑进来。开聊以后，一次只看一位角色；它说完就安静等你读。接不接话、收不收卡，由你决定。
+点右下角正在写字的刘看山，窗沿就展开成小屋。猫头鹰飞上圆窗，呼噜猫和柴犬先后跑进来。等它们坐稳，第一句对话才出现。
+
+<p align="center">
+  <img src="docs/visual-target-v6.1/media/01-open.gif" alt="完整开场动图：点窗沿上的刘看山，伙伴进屋落座，出现对话气泡" width="320" align="middle">
+  <img src="assets/previews/owl-dialogue-02-reference.png" alt="入屋后的对话原图：考据猫头鹰扶镜回到原文，右侧气泡写着「原文说的是一个周末」，下方是聊天记录 02 / 04" width="400" align="middle">
+</p>
+
+### 四位伙伴的原始三视图
+
+依次是**刘看山、呼噜猫、考据猫头鹰、护短柴犬**。每张都是原始设定图，点图可放大看正面、侧面和背面的细节。
+
+<p align="center">
+  <a href="assets/turnarounds/liukanshan-turnaround-sheet.png"><img src="assets/turnarounds/liukanshan-turnaround-sheet.png" alt="刘看山的原始三视图" width="350"></a>
+  <a href="assets/turnarounds/ginger-cat-turnaround-sheet.png"><img src="assets/turnarounds/ginger-cat-turnaround-sheet.png" alt="呼噜猫的原始三视图" width="350"></a>
+</p>
+<p align="center">
+  <a href="assets/turnarounds/owl-turnaround-sheet.png"><img src="assets/turnarounds/owl-turnaround-sheet.png" alt="考据猫头鹰的原始三视图" width="350"></a>
+  <a href="assets/turnarounds/shiba-turnaround-sheet.png"><img src="assets/turnarounds/shiba-turnaround-sheet.png" alt="护短柴犬的原始三视图" width="350"></a>
+</p>
+
+### 圆桌里怎么接话
+
+呼噜猫说完，先从画面退下，猫头鹰再接过话。气泡留在原处，不催着你读下一句。
 
 ![呼噜猫把话交给考据猫头鹰：旧立绘先退，新立绘再入，气泡留在原处](docs/visual-target-v6.1/media/03-speaker-handoff.gif)
 
-**[下载可点击原型](public/previews/roundtable-v6.1/index.html)**（GitHub 文件页点 **Download raw file**，双击下载的 HTML，无需安装或密钥） · [看 44.5 秒全程演示](docs/visual-target-v6.1/media/walkthrough.mp4) · [看定稿图、透明立绘与可编辑源文件](docs/visual-target-v6.1/README.md)
+**[下载可点击原型](public/previews/roundtable-v6.1/index.html)**（GitHub 文件页点 **Download raw file**，双击下载的 HTML，无需安装或密钥） · [看 44.5 秒全程演示](docs/visual-target-v6.1/media/walkthrough.mp4) · [原始素材总索引](assets/README.md) · [定稿图、透明立绘与可编辑源文件](docs/visual-target-v6.1/README.md)
 
 这是前端和动效的**设计目标**。原型使用两篇本地示例，不连知乎；下方正式应用的真实数据流程没有被替换。
 
