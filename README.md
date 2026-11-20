@@ -8,6 +8,8 @@
 
 ---
 
+**原图与动效直达：** [四位动物的原始三视图](assets/turnarounds/) · [看山从窗沿展开小屋、进入对话（GIF）](docs/visual-target-v6.1/media/01-open.gif) · [猫头鹰发言参考原图](assets/previews/owl-dialogue-02-reference.png) · [原始素材总索引](assets/README.md)。
+
 ## 看一遍这版圆桌 · V6.1
 
 从右下角点一下正在写字的刘看山：窗沿展开成小屋，猫头鹰飞上圆窗，呼噜猫和柴犬先后跑进来。开聊以后，一次只看一位角色；它说完就安静等你读。接不接话、收不收卡，由你决定。
@@ -50,7 +52,7 @@ npm run smoke                # 全链路冒烟（56 项）
 
 ### 正式应用的绘本大图（不含上方已入库的原型素材）
 
-`public/assets/images/` 与 `public/assets/ip/` 下的 7 个大图受上行带宽限制未入库，缺图不会崩，只是小屋背景与右下角头像裂图。补救方式：
+`public/assets/images/` 与 `public/assets/ip/` 下的 7 个运行时文件没有重复提交；对应的场景原图和看山参考图保存在[原始美术目录](assets/README.md)。正式应用如果缺少这些展示文件，可以从归档或本地素材补齐：
 
 ```bash
 # 方式 A：本地素材
@@ -58,6 +60,7 @@ cp "F:\图片\知乎\毛茸茸圆桌会\*.png" public/assets/images/
 unzip -j "F:\图片\知乎\kanshan-three-views.zip" "看山三视图/*.jpg" -d public/assets/ip/
 
 # 方式 B：仓库内已有等价的归档素材
+#   assets/images/*.png（原尺寸，保留原图，不被 WebP 替换）
 #   assets/images/*.webp（1600×900 压缩版）
 #   assets/ip/kanshan-*.jpg（同源刘看山三视图）
 ```

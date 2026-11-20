@@ -2,6 +2,8 @@
 
 ![从点看山、伙伴入屋到递卡收屋的八个关键画面](media/storyboard.png)
 
+找原始人设和窗沿动画，请看[原始美术与动效](../../assets/README.md)：含四角色三视图、完整开场 GIF，以及猫头鹰对话参考截图；这些与本版定稿立绘分别保留。
+
 ## 先体验
 
 - **能点、能打字的版本：** 打开[单文件原型](../../public/previews/roundtable-v6.1/index.html)的 GitHub 文件页，点 **Download raw file** 下载，用浏览器打开。图已经装在文件里，不另下素材，也不需要密钥。
