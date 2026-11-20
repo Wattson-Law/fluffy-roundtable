@@ -30,6 +30,14 @@
   <a href="assets/turnarounds/shiba-turnaround-sheet.png"><img src="assets/turnarounds/shiba-turnaround-sheet.png" alt="护短柴犬的原始三视图" width="350"></a>
 </p>
 
+### 四位伙伴的动作立绘
+
+刘看山伏案写字、举起放大镜、捧书阅读；呼噜猫从打盹到踱步，再追起蝴蝶。猫头鹰展翅、低头沉思、放声笑，柴犬则咧嘴笑、追皮球，最后趴下休息。
+
+[![十二张动作立绘总览，每行一位伙伴，从上到下为刘看山、呼噜猫、考据猫头鹰和护短柴犬，每行三个动作](assets/action-poses/v1/overview.png)](assets/action-poses/v1/overview.png)
+
+[按角色查看和下载透明单图](assets/action-poses/v1/README.md) · [整套下载（ZIP）](assets/action-poses/v1/roundtable-action-poses-v1.zip?raw=true)
+
 ### 圆桌里怎么接话
 
 呼噜猫说完，先从画面退下，猫头鹰再接过话。气泡留在原处，不催着你读下一句。
@@ -128,9 +136,9 @@ src/
 | [`docs/`](docs/) | 01–07：宣传通稿、策划与技术架构全案、UI 动效指南、分镜与三视图提示词、Galgame 差分立绘、11.16 拉门小屋进度 |
 | [`docs/visual-target-v6.1/`](docs/visual-target-v6.1/) | 当前交互目标：认可的角色立绘、动效、可重建的单页原型 |
 | [`prototypes/`](prototypes/) | 早期 3 个浏览器直接打开的交互动效原型（5 步 Demo / Galgame v1 / 拉门小屋聊天室） |
-| [`assets/`](assets/) | 12 张去背多视角透明 PNG、四角色三视图、界面预览、概念图 WebP、刘看山 IP 素材 |
+| [`assets/`](assets/) | 12 张去背多视角图、四角色原始三视图、12 张透明动作立绘、界面预览、概念图与刘看山 IP 素材 |
 
-> `.gitignore` 排除了 `assets/` 以外的构建产物；`assets/` 为策划归档，约 45 MB，`git clone` 时可加 `--filter=blob:none` 或 `--depth=1` 加速。
+> 只看图不必克隆仓库：可直接在本页预览，或单独下载上方的动作素材包。
 
 ## 进度
 

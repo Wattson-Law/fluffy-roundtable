@@ -13,6 +13,10 @@
 
 [四只同框参考](turnarounds/snow-scarf-4animals-ref.jpg) · [按角色和角度拆好的透明图](sprites/) · [刘看山 IP 参考图](ip/)。三视图是人设参考，不用聊天态立绘代替。
 
+## 四位伙伴的动作立绘
+
+[查看十二个动作及各自的透明原图](action-poses/v1/README.md) · [四角色动作总览](action-poses/v1/overview.png) · [下载整套 PNG（ZIP）](action-poses/v1/roundtable-action-poses-v1.zip?raw=true)。这一组是基于上方三视图绘制的静态姿势，和下方的开场动画分别留档。
+
 ## 从看山的窗沿到小屋对话框
 
 [看完整开场原动图（GIF）](../docs/visual-target-v6.1/media/01-open.gif)：点正在窗沿写字的看山，窗沿撑开成屋，猫头鹰飞进来，猫与柴犬跑进来；伙伴落座后出现第一位说话者和气泡。这段是开场，不是单独的角色换人片段。
