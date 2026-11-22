@@ -23,7 +23,7 @@ export function useCatDelivery(flags: { activeKey: string | null; busy: boolean 
         !!editor.value.trim();
       const env = {
         visible: true,
-        busy: latest.current.busy || typing,
+        busy: latest.current.busy || typing || window.getSelection()?.isCollapsed === false,
         activeKey: latest.current.activeKey,
       };
       if (!env.busy) updateBook((b) => catCheckIn(b, Date.now(), env));

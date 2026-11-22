@@ -82,9 +82,9 @@ export function RoomScene({ line, settled }: { line?: Turn; settled: boolean }) 
     </div>
   );
 }
-export function Evidence({ quote }: { quote: QuoteRef }) {
-  return (
-    <a className="evidence-card" href={quote.sourceUrl} target="_blank" rel="noreferrer">
+export function Evidence({ quote, onLocate }: { quote: QuoteRef; onLocate?: () => void }) {
+  const label = (
+    <>
       <small>
         <Quote size={12} /> {quote.reason || "原文摘录"} <ExternalLink size={12} />
       </small>
@@ -95,6 +95,15 @@ export function Evidence({ quote }: { quote: QuoteRef }) {
           .join(" · ")}{" "}
         ↗
       </span>
+    </>
+  );
+  return onLocate ? (
+    <button className="evidence-card" onClick={onLocate} title="回到这句原文">
+      {label}
+    </button>
+  ) : (
+    <a className="evidence-card" href={quote.sourceUrl} target="_blank" rel="noreferrer">
+      {label}
     </a>
   );
 }

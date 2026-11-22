@@ -3,7 +3,7 @@
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useReadingTracker } from "./useReadingTracker";
 import { AnswerCard } from "./AnswerCard";
-import type { ZhihuItem } from "@/types";
+import type { PassageBookmark, ZhihuItem } from "@/types";
 
 /** 问题详情：真实回答阅读流 */
 export function QuestionDetail({
@@ -13,6 +13,7 @@ export function QuestionDetail({
   recordedUrls,
   onBack,
   onRead,
+  onClip,
   degradedReason,
   readerActive,
   sample = false,
@@ -23,6 +24,7 @@ export function QuestionDetail({
   recordedUrls: Set<string>;
   onBack: () => void;
   onRead: (item: ZhihuItem) => void;
+  onClip: (item: ZhihuItem, mark: PassageBookmark) => void;
   degradedReason?: string;
   readerActive: boolean;
   sample?: boolean;
@@ -67,6 +69,7 @@ export function QuestionDetail({
               index={i}
               recorded={recordedUrls.has(it.url)}
               onRead={record}
+              onClip={onClip}
             />
           ))}
         </div>

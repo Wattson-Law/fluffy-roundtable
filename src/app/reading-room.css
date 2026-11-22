@@ -1477,3 +1477,51 @@ button:disabled {
   line-height: 1.85;
   color: #526353;
 }
+
+
+/* Pencil in the margin: deliberately quieter than the cabin entrance. */
+[data-passage-text]::selection, [data-passage-text] *::selection { color: var(--ink); background: #f5dfa5; }
+.sentence-tools { margin: 10px 0 4px; color: var(--forest); font-size: 13px; }
+.sentence-toolbar, .sentence-pages, .clip-action, .passage-back { display: flex; align-items: center; gap: 9px; }
+.sentence-toolbar small, .sentence-tools > small, .sentence-pages span { color: var(--soft); font-size: 12px; }
+.picker-toggle, .clip-action button, .passage-back { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; min-height: 36px; }
+.picker-toggle { padding: 3px 10px; border: 1px solid var(--line); border-radius: 5px 10px 10px 5px; }
+.sentence-picker { padding: 12px; margin: 6px 0; border: 1px solid var(--line); border-radius: 8px; background: #f6f6eb; }
+.sentence-picker p { margin: 0 0 6px; color: var(--soft); font-size: 12px; }
+.sentence-picker [data-sentence] { display: block; width: 100%; min-height: 38px; border-left: 2px solid transparent; text-align: left; padding: 6px 9px; line-height: 1.65; overflow-wrap: anywhere; }
+.sentence-picker [data-sentence]:hover { background: #eef0e3; }
+.sentence-picker [aria-pressed=true] { border-color: #ac7627; background: #f7e9bf; color: #4d4123; }
+.sentence-pages { justify-content: flex-end; margin-top: 6px; }
+.sentence-pages button { padding: 5px 8px; min-height: 34px; }
+.clip-action { flex-wrap: wrap; margin-top: 6px; border-left: 3px solid #b88536; background: #f8f2df; padding: 7px 10px; }
+.clip-action q { flex: 1 1 145px; color: #554c38; line-height: 1.6; overflow-wrap: anywhere; }
+.clip-action button, .passage-back { padding: 4px 12px; border-radius: 6px; background: var(--forest); color: white; }
+.bookmark-ticket { position: relative; margin: 9px 0; border: 1px solid #e1d7b9; border-left: 3px solid #b48238; border-radius: 3px 10px 8px 3px; background: #fbf5e5; padding: 9px 13px; color: #504834; }
+.bookmark-ticket small, .passage-sheet a { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #695b3a; }
+.bookmark-ticket q, .shelf-quote { display: block; overflow-wrap: anywhere; font: 500 15px/1.65 var(--serif); }
+.bookmark-ticket { display: block; width: 100%; text-align: left; }
+.bookmark-ticket .ticket-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 5px; }
+.bookmark-ticket .ticket-foot > span { font-size: 11px; color: var(--soft); }
+.bookmark-ticket .ticket-foot .ticket-link { color: var(--forest); font-size: 12px; font-weight: 650; }
+.bookmark-ticket:hover .ticket-link { text-decoration: underline; }
+button.evidence-card { width: 100%; text-align: left; }
+.shelf-quote { border-left: 2px solid #d9c988; padding-left: 8px; margin: 5px 0; color: var(--soft); }
+.passage-dialog { width: min(545px, 100vw); }
+.passage-sheet { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 9px; }
+.passage-sheet > small, .passage-state { font-size: 12px; color: var(--forest); }
+.passage-sheet h3 { font: 600 20px/1.45 var(--serif); overflow-wrap: anywhere; }
+.passage-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 15px 10px; border-block: 1px solid var(--line); line-height: 1.95; font: 16px/1.95 var(--serif); white-space: pre-wrap; overflow-wrap: anywhere; }
+.passage-scroll mark { background: #f7dfa0; color: #393626; border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.passage-scroll mark:focus { outline: none; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #9b702b; }
+.passage-back { align-self: flex-start; }
+@media (prefers-reduced-motion: no-preference) {
+  .clip-action, .room-flow > .bookmark-ticket { animation: tuck-bookmark .28s ease-out both; }
+  @keyframes tuck-bookmark { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}
+@media (pointer: coarse) { .picker-toggle, .clip-action button, .sentence-picker [data-sentence], .bookmark-ticket { min-height: 44px; } }
+
+.clip-action.floating { position: fixed; z-index: 35; max-width: calc(100vw - 16px); width: max-content; margin: 0; padding: 2px 5px; border-radius: 5px 9px 9px 5px; box-shadow: 0 3px 14px #30352625; background: #fff9e9; }
+.clip-action.floating q { display: none; }
+.history-bookmark { display: flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 0; min-height: 32px; font-size: 12px; color: var(--forest); }
+.history-bookmark span { flex: none; }
+.history-bookmark q { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

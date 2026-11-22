@@ -84,8 +84,22 @@ export interface ReadingTrailItem {
   visits?: number;
 }
 
+/** A reader-selected passage of published text, not a chat message. Offsets use UTF-16. */
+export interface PassageBookmark {
+  sourceId: string;
+  url: string;
+  title: string;
+  author: string;
+  origin?: "sample";
+  start: number;
+  excerpt: string;
+  before: string;
+  after: string;
+}
+
 /** 《清醒猫咖手账》存档条目 */
 export interface JournalEntry {
+  bookmark?: PassageBookmark;
   id: string;
   createdAt: number;
   topicTitle: string;
@@ -120,6 +134,8 @@ export interface RoundtableRadar {
 }
 
 export interface QuoteRef {
+  /** Assigned by the app only after checking the selected source window. */
+  kind?: "bookmark";
   /** 必须是真实传入的编号 READ_x / EXT_x / NEW_x */
   sourceTag: string;
   /** 必须为原文真实子串，服务端逐字校验 */

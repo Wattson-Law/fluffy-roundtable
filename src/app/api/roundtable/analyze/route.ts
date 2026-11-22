@@ -8,6 +8,8 @@
  * 5. LLM 不可用/超时/输出不合格 → 规则引擎兜底，永不白屏
  */
 import { NextRequest, NextResponse } from "next/server";
+import { verifyFocus } from "@/lib/bookmarks";
+import { focusRound } from "@/lib/focused-round";
 import { shapeRoles } from "@/lib/companion";
 import { createHash } from "node:crypto";
 import { TTL, cacheGet, cacheSet } from "@/lib/cache";
@@ -38,6 +40,7 @@ export const dynamic = "force-dynamic";
 interface Body {
   trail?: ReadingTrailItem[];
   topicHint?: string;
+  focus?: unknown;
 }
 
 function trailToItem(t: ReadingTrailItem): ZhihuItem {
@@ -100,6 +103,9 @@ export async function POST(req: NextRequest) {
   }
 
   const trail = rawTrail.map(trailToItem);
+  const focus = verifyFocus(trail, body.focus);
+  if (body.focus !== undefined && (!focus || body.trail?.length !== 1))
+    return NextResponse.json({ error: "invalid_focus", message: "书签与这篇正文对不上，请回到原文重新选一句。" }, { status: 400 });
   const topicHint = (
     typeof body?.topicHint === "string"
       ? body.topicHint
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest) {
   const fingerprint = createHash("sha256")
     .update(
       JSON.stringify([
-        topicHint,
+        topicHint, focus,
         trail.map((t) => [
           t.id,
           t.url,
@@ -175,7 +181,7 @@ export async function POST(req: NextRequest) {
 
   /* ---------- 4. LLM 路径（成功才覆盖兜底） ---------- */
   if (llmConfigured) {
-    const raw = await callLlm(mode, topicHint, pool);
+    const raw = await callLlm(mode, topicHint, pool, focus?.excerpt);
     if (!raw) {
       // 如实记录降级原因（余额不足 / 限流 / 超时），不假装用了 LLM
       const why = getLastLlmError();
@@ -252,6 +258,7 @@ export async function POST(req: NextRequest) {
     result.meta.note = "外部检索暂时不可用，本轮只基于你刚看过的帖子分析";
   }
 
+  if (focus) result = focusRound(result, trail[0], focus.excerpt);
   cacheSet(cacheKey, result, TTL.ROUNDTABLE);
   return NextResponse.json(result);
 }

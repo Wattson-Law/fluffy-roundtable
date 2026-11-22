@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink, MessageSquare, ShieldCheck } from "lucide-react";
-import type { ZhihuItem } from "@/types";
+import { SelectablePassage } from "./SelectablePassage";
+import type { PassageBookmark, ZhihuItem } from "@/types";
 
 /**
  * 单篇回答卡片
@@ -13,11 +14,13 @@ export function AnswerCard({
   index,
   recorded,
   onRead,
+  onClip,
 }: {
   item: ZhihuItem;
   index: number;
   recorded: boolean;
   onRead: (item: ZhihuItem) => void;
+  onClip: (item: ZhihuItem, mark: PassageBookmark) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const toggle = () => {
@@ -84,7 +87,18 @@ export function AnswerCard({
       )}
 
       {/* 真实回答正文 */}
-      <div className={`zh-prose ${expanded ? "" : "zh-clamp-4"}`}>{item.contentText}</div>
+      <SelectablePassage
+        item={item}
+        clamped={long && !expanded}
+        onExpand={() => {
+          setExpanded(true);
+          onRead(item);
+        }}
+        onClip={(m) => {
+          onRead(item);
+          onClip(item, m);
+        }}
+      />
 
       {long && (
         <button

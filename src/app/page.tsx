@@ -39,11 +39,15 @@ import {
   type Book,
   type Room,
 } from "@/lib/companion";
+import { bookmarkKey, requestFocus } from "@/lib/bookmarks";
+import { focusRound } from "@/lib/focused-round";
+import { PassageDialog } from "@/components/companion/PassageBookmark";
 import { art } from "@/lib/art";
 import { sampleItems, sampleRound } from "@/lib/reading-samples";
 import type {
   HotItem,
   JournalEntry,
+  PassageBookmark,
   ReadingTrailItem,
   RoundtableResult,
   Speaker,
@@ -52,6 +56,7 @@ import type {
 
 type Overlay = "cabin" | "shelf" | "journal" | "friends" | null;
 export default function Home() {
+  const [viewing, setViewing] = useState<PassageBookmark | null>(null);
   const [partner, setPartner] = useState<Speaker>("purr_cat");
   function meet(s: Speaker) {
     setPartner(s);
@@ -131,6 +136,7 @@ export default function Home() {
   useCatDelivery({
     activeKey: overlay === "cabin" ? key : null,
     busy:
+      !!viewing ||
       overlay === "friends" ||
       overlay === "shelf" ||
       overlay === "journal" ||
@@ -205,7 +211,14 @@ export default function Home() {
   }
   async function analyze(t: Room) {
     if (t.context.at(-1)?.origin === "sample") {
-      updateBook((b) => withResult(b, t.key, sampleRound(t.context)));
+      const result = sampleRound(t.context);
+      updateBook((b) =>
+        withResult(
+          b,
+          t.key,
+          t.bookmark ? focusRound(result, t.context[0], t.bookmark.excerpt) : result,
+        ),
+      );
       return;
     }
     reportReq.current?.abort();
@@ -232,6 +245,7 @@ export default function Home() {
             }),
           ),
           topicHint: t.title,
+          ...(t.bookmark ? { focus: requestFocus(t.bookmark) } : {}),
         }),
       });
       const data = await res.json();
@@ -244,16 +258,32 @@ export default function Home() {
       if (!c.signal.aborted) setLoading(false);
     }
   }
-  function openRoom(context: ReadingTrailItem[] = getTrail(), resumeKey?: string) {
+  function openRoom(
+    context: ReadingTrailItem[] = getTrail(),
+    resumeKey?: string,
+    bookmark?: PassageBookmark,
+  ) {
     cancelRoomRequests();
     setError(null);
     const id = resumeKey ?? context.at(-1)?.url ?? null;
     setKey(id);
     setOverlay("cabin");
     if (!id) return;
-    const b = updateBook((b) => startThread(b, id, context, Date.now()));
+    const b = updateBook((b) => startThread(b, id, context, Date.now(), bookmark));
     const t = b.threads.find((v) => v.key === id);
     if (t && !t.result) void analyze(t);
+  }
+  function clip(item: ZhihuItem, mark: PassageBookmark) {
+    // AnswerCard already recorded this visit; do not count it twice. The history keeps its usual prefix.
+    const row =
+      getHistory().find((t) => t.url === item.url) ??
+      pushTrail(item, question ?? undefined).find((t) => t.url === item.url);
+    if (!row) return;
+    openRoom(
+      [{ ...row, contentText: mark.before + mark.excerpt + mark.after }],
+      bookmarkKey(mark),
+      mark,
+    );
   }
   async function choose(c: { id: string; label: string }) {
     if (!room || choosing || room.committed) return;
@@ -291,10 +321,13 @@ export default function Home() {
   function commit() {
     if (!room?.result || room.committed) return;
     const { result: r } = room;
-    const sources = r.curatedSources.length ? r.curatedSources : room.context;
+    const sources = [
+      ...new Map([...room.context, ...r.curatedSources].map((s) => [s.url, s])).values(),
+    ];
     addJournal(
       {
         topicTitle: (room.context.at(-1)?.origin === "sample" ? "〔试读〕" : "") + r.topicTitle,
+        ...(room.bookmark ? { bookmark: room.bookmark } : {}),
         oneLineTakeaway: r.controlCard.oneLineTakeaway,
         microAction: room.followUp?.microAction ?? r.controlCard.microAction,
         catBadgeTheme: r.controlCard.catBadgeTheme,
@@ -304,7 +337,7 @@ export default function Home() {
       `round:${room.key}`,
     );
     updateBook((b) =>
-      changeRoom(b, room.key, (t) => ({
+      changeRoom(b.pending?.key === room.key ? dismissNote(b) : b, room.key, (t) => ({
         ...t,
         committed: true,
         nudgedFor: t.turns.findLast((m) => m.kind === "typed")?.id ?? t.nudgedFor,
@@ -362,6 +395,7 @@ export default function Home() {
                   loading={answersLoading}
                   onBack={home}
                   onRead={read}
+                  onClip={clip}
                   recordedUrls={new Set(history.map((t) => t.url))}
                   readerActive={!overlay}
                   sample={sample}
@@ -462,6 +496,7 @@ export default function Home() {
             count={Math.min(5, history.filter((t) => t.origin === history.at(-1)?.origin).length)}
             onOpen={() => openRoom()}
             note={note}
+            bookmarked={!!book.threads.find((t) => t.key === book.pending?.key)?.bookmark}
             onDismiss={() => updateBook(dismissNote)}
             onNote={() => {
               if (book.pending) openRoom([], book.pending.key);
@@ -491,6 +526,7 @@ export default function Home() {
             onChoose={choose}
             choosing={choosing}
             onCommit={commit}
+            onLocate={setViewing}
           />
         )}
         {overlay === "shelf" && (
@@ -511,7 +547,20 @@ export default function Home() {
           />
         )}
         {overlay === "friends" && <PartnerGuide initial={partner} onClose={close} />}
-        {overlay === "journal" && <CatJournalDrawer entries={journal} onClose={close} />}
+        {overlay === "journal" && (
+          <CatJournalDrawer entries={journal} onClose={close} onLocate={setViewing} />
+        )}
+        {viewing && (
+          <PassageDialog
+            mark={viewing}
+            body={
+              [...answers, ...sampleItems].find(
+                (i) => i.url === viewing.url && i.id === viewing.sourceId,
+              )?.contentText
+            }
+            onClose={() => setViewing(null)}
+          />
+        )}
       </div>
     </MotionConfig>
   );

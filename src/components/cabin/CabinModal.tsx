@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { ArrowRight, ArrowUp, BookOpen, MessageSquare, Feather, X } from "lucide-react";
+import { BookmarkTicket } from "@/components/companion/PassageBookmark";
+import type { PassageBookmark, QuoteRef } from "@/types";
 import { art } from "@/lib/art";
 import { names, type Room } from "@/lib/companion";
 import { PaperDialog } from "@/components/companion/PaperDialog";
@@ -20,6 +22,7 @@ export function CabinModal({
   onSay,
   onChoose,
   onCommit,
+  onLocate,
   choosing,
 }: {
   room?: Room;
@@ -33,6 +36,7 @@ export function CabinModal({
   onSay: (s: string) => void;
   onChoose: (c: { id: string; label: string }) => void;
   onCommit: () => void;
+  onLocate: (m: PassageBookmark) => void;
   choosing: boolean;
 }) {
   const reduced = useReducedMotion();
@@ -76,6 +80,13 @@ export function CabinModal({
   useEffect(() => {
     if (cardOpen) cardRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
   }, [cardOpen]);
+  function locateQuote(q: QuoteRef) {
+    const m = room?.bookmark;
+    return m && q.kind === "bookmark" && q.sourceUrl === m.url && q.excerpt === m.excerpt
+      ? () => onLocate(m)
+      : undefined;
+  }
+  const pinnedEvidence = !!(line?.quoteRef && locateQuote(line.quoteRef));
   const inputs = !!room && started;
   function submit() {
     if (!inputs || !draft.trim() || composing.current) return;
@@ -107,12 +118,19 @@ export function CabinModal({
         </div>
         <div className="room-flow" ref={flow}>
           <RoomScene line={line} settled={settled} />
+          {room?.bookmark && (
+            <BookmarkTicket
+              verified={pinnedEvidence}
+              mark={room.bookmark}
+              onLocate={() => onLocate(room.bookmark!)}
+            />
+          )}
           {!room ? (
             <div className="gather-note">
               <small>窗边的看山</small>
               <p>书页还是空的。先去读一篇回答，等你回来，我们就从那篇聊起。</p>
             </div>
-          ) : !started ? (
+          ) : !started && room.bookmark ? null : !started ? (
             <div className="gather-note">
               <small>
                 <Feather size={13} /> 看山抄下这一句
@@ -124,7 +142,9 @@ export function CabinModal({
             </div>
           ) : (
             <>
-              {line?.quoteRef && <Evidence quote={line.quoteRef} />}
+              {line?.quoteRef && !pinnedEvidence && (
+                <Evidence quote={line.quoteRef} onLocate={locateQuote(line.quoteRef)} />
+              )}
               {line?.speaker === "shiba" && r && <Sources sources={r.curatedSources} />}
               <div className="transcript">
                 <div className="transcript-head">
@@ -153,7 +173,9 @@ export function CabinModal({
                         {m.kind === "note" ? " · 主动便签" : ""}
                       </b>
                       <span>{m.text}</span>
-                      {showLog && m.quoteRef && <Evidence quote={m.quoteRef} />}
+                      {showLog && m.quoteRef && (
+                        <Evidence quote={m.quoteRef} onLocate={locateQuote(m.quoteRef)} />
+                      )}
                     </div>
                   ))}
                 </div>

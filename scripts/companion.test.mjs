@@ -181,3 +181,90 @@ test("dog favors a traceable counterexample over an unrelated comment", () => {
   assert.equal(c.contrast, true);
   assert.equal(selectComment([{ comments: [] }]), undefined);
 });
+
+test("bookmarks keep the exact occurrence, even beyond the history excerpt; never guess at conflicting copies", async () => {
+  const { clipPassage, locatePassage, bookmarkKey, sentenceChoices, requestFocus, verifyFocus } =
+    await import("../src/lib/bookmarks.ts");
+  const quote = "同一句话也会再出现。",
+    source = item(2);
+  source.contentText = "甲".repeat(1700) + quote + "乙".repeat(200) + quote + "丙";
+  const offset = source.contentText.lastIndexOf(quote);
+  const mark = clipPassage(source, offset, offset + quote.length);
+  assert.equal(mark.excerpt, quote);
+  assert.notEqual(bookmarkKey(mark), bookmarkKey(clipPassage(source, 1700, 1700 + quote.length)));
+  assert.equal(locatePassage(source.contentText, mark), offset);
+  assert.equal(locatePassage("前言" + source.contentText, mark), offset + 2);
+  assert.equal(locatePassage("另一种说法。", mark), null);
+  assert.equal(locatePassage("a" + quote + "b" + quote + "c", mark), null);
+  assert.equal(clipPassage(source, 0, 200), null);
+  assert.equal(clipPassage(source, -1, 10), null);
+  const choices = sentenceChoices("  甲读书。\n乙写字！最后" + "🌱".repeat(181));
+  for (const c of choices) {
+    assert.equal(c.text, ("  甲读书。\n乙写字！最后" + "🌱".repeat(181)).slice(c.start, c.end));
+    assert.ok([...c.text].length <= 160 && !/[\uD800-\uDBFF]$/.test(c.text));
+  }
+  assert.equal(choices[1].text, "乙写字！");
+  const ctx = { ...source, contentText: mark.before + mark.excerpt + mark.after };
+  const req = requestFocus(mark);
+  assert.ok(verifyFocus([ctx], req));
+  assert.equal(verifyFocus([ctx], { ...req, start: 0 }), null);
+  assert.equal(verifyFocus([ctx], { ...req, id: "other" }), null);
+  assert.equal(verifyFocus([ctx], { ...req, excerpt: "私人留言" }), null);
+});
+
+test("a cat note belongs to one unfinished bookmark, without displaying the passage or private chat", async () => {
+  const { clipPassage, bookmarkKey } = await import("../src/lib/bookmarks.ts");
+  const row = item(1),
+    m = clipPassage(row, 0, 5),
+    k = bookmarkKey(m);
+  let b = startThread(emptyBook(), k, [row], at, m);
+  assert.equal(b.threads[0].bookmark.excerpt, m.excerpt);
+  b = say(withResult(b, k, result), k, "两种方法我拿不定", at + 1);
+  let sent = catCheckIn(b, at + IDLE_MS + 5, ready);
+  assert.equal(sent.pending.key, k);
+  assert.match(sent.threads[0].turns.at(-1).text, /书签|夹的那句/);
+  assert.doesNotMatch(sent.threads[0].turns.at(-1).text, /原文中写了|我拿不定/);
+  const done = { ...b, threads: [{ ...b.threads[0], committed: true }] };
+  assert.equal(catCheckIn(done, at + IDLE_MS + 5, ready), done);
+  const privateRoom = {
+    ...b,
+    threads: [{ ...b.threads[0], bookmark: { ...m, excerpt: "我的病历" } }],
+  };
+  assert.equal(catCheckIn(privateRoom, at + IDLE_MS + 5, ready), privateRoom);
+});
+
+test("a reader who explicitly finishes the conversation is not nudged", () => {
+  const ended = say(active(), key, "我已经想明白了，不用继续了", at + 2);
+  assert.equal(catCheckIn(ended, at + IDLE_MS + 5, ready), ended);
+});
+
+test("two clips and a whole-article room survive reload without sharing progress", async () => {
+  const { clipPassage, bookmarkKey } = await import("../src/lib/bookmarks.ts");
+  const { getBook, updateBook, clearCompanion } = await import("../src/lib/storage.ts");
+  const local = new Map();
+  globalThis.window = {
+    localStorage: { getItem: (k) => local.get(k) ?? null, setItem: (k, v) => local.set(k, v) },
+  };
+  try {
+    const row = item(12),
+      marks = [clipPassage(row, 0, 3), clipPassage(row, 3, 7)];
+    for (const m of marks) updateBook((b) => startThread(b, bookmarkKey(m), [row], at, m));
+    updateBook((b) => startThread(b, row.url, [row], at));
+    const first = bookmarkKey(marks[0]),
+      second = bookmarkKey(marks[1]);
+    updateBook((b) => nextLine(withResult(b, first, result), first, at + 1));
+    updateBook((b) => startThread(b, first, [row], at + 2, marks[0]));
+    const restored = getBook().threads;
+    assert.equal(restored.length, 3);
+    assert.equal(restored.find((t) => t.key === first).cursor, 1);
+    assert.deepEqual(restored.find((t) => t.key === second).turns, []);
+    assert.equal(restored.find((t) => t.key === row.url).bookmark, undefined);
+    assert.equal(
+      restored.find((t) => t.key === second).bookmark.excerpt,
+      row.contentText.slice(3, 7),
+    );
+  } finally {
+    clearCompanion();
+    delete globalThis.window;
+  }
+});

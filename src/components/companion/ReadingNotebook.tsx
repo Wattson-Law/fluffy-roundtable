@@ -34,7 +34,9 @@ export function ReadingNotebook({
 }) {
   const [sure, setSure] = useState(false),
     [tab, setTab] = useState<"reading" | "conversations">("reading");
-  const chats = book.threads.filter((t) => t.turns.length).sort((a, z) => z.touched - a.touched);
+  const chats = book.threads
+    .filter((t) => t.turns.length || t.bookmark)
+    .sort((a, z) => z.touched - a.touched);
   return (
     <PaperDialog className="shelf-dialog" label="阅读记录与聊天" onClose={onClose}>
       <div className="shelf-content">
@@ -59,7 +61,7 @@ export function ReadingNotebook({
           <p className="muted">
             {tab === "reading"
               ? "展开全文或在正文停留 2.5 秒后记下。保留最近 100 篇；默认带最近 5 篇进圆桌。"
-              : "每篇的对话单独收好。点开可从上次停下的位置继续，最近 16 间小屋各留 72 条发言。"}
+              : "同篇的不同书签也分开收好。点开可从上次停下的位置继续，最近 16 间小屋各留 72 条发言。"}
           </p>
           {tab === "reading"
             ? [...history].reverse().map((t) => (
@@ -77,6 +79,21 @@ export function ReadingNotebook({
                     </a>
                     <button onClick={() => onOpen(t)}>和它们聊这篇 →</button>
                   </div>
+                  {chats
+                    .filter((c) => c.bookmark?.url === t.url)
+                    .slice(0, 2)
+                    .map((c) => (
+                      <button
+                        key={c.key}
+                        className="history-bookmark"
+                        aria-label={`继续这张书签：${c.bookmark!.excerpt}`}
+                        onClick={() => onResume(c.key)}
+                      >
+                        <span>这篇夹过的书签</span>
+                        <q>{c.bookmark!.excerpt}</q>
+                        <span aria-hidden>→</span>
+                      </button>
+                    ))}
                 </article>
               ))
             : chats.map((t) => (
@@ -85,6 +102,7 @@ export function ReadingNotebook({
                     {dateLabel(t.touched)} · {t.turns.length} 条发言
                   </small>
                   <h3>{t.title}</h3>
+                  {t.bookmark && <q className="shelf-quote">{t.bookmark.excerpt}</q>}
                   <button onClick={() => onResume(t.key)}>继续这段聊天 →</button>
                 </article>
               ))}

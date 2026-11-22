@@ -1,5 +1,6 @@
 "use client";
 import type { JournalEntry, ReadingTrailItem, ZhihuItem } from "@/types";
+import { isBookmark } from "./bookmarks.ts";
 import type { Book, Room } from "./companion";
 
 const LEGACY = "fr.readingTrail",
@@ -112,7 +113,7 @@ export function getBook(): Book {
       t.context.every(validTrail) &&
       Array.isArray(t.turns) &&
       Number.isInteger(t.cursor),
-  );
+  ).map(t => t.bookmark && !isBookmark(t.bookmark) ? { ...t, bookmark: undefined } : t);
   return {
     ...defaultBook(),
     ...b,
@@ -140,7 +141,7 @@ export function clearCompanion() {
 }
 export function getJournal(): JournalEntry[] {
   const v = read<JournalEntry[]>(JOURNAL, []);
-  return Array.isArray(v) ? v : [];
+  return Array.isArray(v) ? v.map(e => e.bookmark && !isBookmark(e.bookmark) ? { ...e, bookmark: undefined } : e) : [];
 }
 export function addJournal(
   entry: Omit<JournalEntry, "id" | "createdAt">,

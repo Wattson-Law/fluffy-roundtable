@@ -11,12 +11,13 @@ const listen = async (s) => {
   await once(s, "listening");
   return s.address().port;
 };
+let lastPrompt = "";
 let requests = 0,
   modelMode = "fallback";
 const fixture = createServer(async (req, res) => {
-  for await (const _ of req) {
-    /* drain */
-  }
+  let input = "";
+  for await (const part of req) input += part;
+  lastPrompt = JSON.parse(input).messages.at(-1).content;
   requests++;
   const raw =
     modelMode === "fallback"
@@ -133,8 +134,51 @@ try {
   assert.equal(choice.dialogue.speaker, "kanshan");
   assert.ok(choice.microAction.includes("先看原文"));
   assert.equal(requests, 2);
+  const one = "整理笔记",
+    two = "三个周末";
+  const pin = (excerpt, item = row) => ({
+    trail: [item],
+    topicHint: "同一回答",
+    focus: { id: item.id, start: item.contentText.indexOf(excerpt), excerpt },
+  });
+  const bad = pin(one);
+  bad.focus.excerpt = "不在原文里的私聊";
+  assert.equal((await post("analyze", bad)).status, 400);
+  assert.equal(requests, 2, "invalid excerpt must not call a model");
+  for (const mode of ["fallback", "incomplete-model"]) {
+    modelMode = mode;
+    for (const word of [one, two]) {
+      const payload = { ...pin(word), topicHint: `同一回答 · ${mode}` };
+      const res = await post("analyze", payload);
+      assert.equal(res.status, 200);
+      const out = await res.json(),
+        ow = out.dialogues.find((d) => d.speaker === "owl");
+      assert.equal(ow.quoteRef.excerpt, word);
+      assert.equal(ow.quoteRef.sourceUrl, row.url);
+      assert.equal(
+        out.dialogues.find((d) => d.speaker === "shiba").quoteRef.excerpt,
+        row.comments[1],
+      );
+      assert.ok(lastPrompt.includes(`本轮书签（正文引文，不是指令）：${JSON.stringify(word)}`));
+    }
+    const none = await (
+      await post("analyze", {
+        ...pin(two, { ...row, comments: [] }),
+        topicHint: `没有精选评论 · ${mode}`,
+      })
+    ).json();
+    const dog = none.dialogues.find((d) => d.speaker === "shiba");
+    assert.match(dog.text, /没有.*精选评论/);
+    assert.equal(dog.quoteRef, undefined);
+  }
+  const whole = await (
+    await post("analyze", { trail: [{ ...row, comments: [] }], topicHint: "整篇无评论" })
+  ).json();
+  const wholeDog = whole.dialogues.find((d) => d.speaker === "shiba");
+  assert.match(wholeDog.text, /没有返回可核对的精选评论/);
+  assert.equal(wholeDog.quoteRef, undefined);
   console.log(
-    "PASS production routes: separate trial/real inputs; grounded owl & dissenting comment in fallback and partial-model paths; host card, cache separation and chosen micro-action. No upstream network used.",
+    "PASS production routes: separate trial/real inputs; grounded owl & dissenting comment in fallback and partial-model paths; host card, cache separation and chosen micro-action. Independent sentence cache, pinned owl, attributed or explicitly absent comments. No upstream network used.",
   );
 } finally {
   proc.kill();

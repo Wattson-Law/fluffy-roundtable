@@ -1,15 +1,18 @@
 "use client";
 import { X, BookHeart } from "lucide-react";
-import type { JournalEntry } from "@/types";
+import { BookmarkTicket } from "@/components/companion/PassageBookmark";
+import type { JournalEntry, PassageBookmark } from "@/types";
 import { art } from "@/lib/art";
 import { PaperDialog } from "@/components/companion/PaperDialog";
 import { dateLabel } from "@/components/companion/ReadingNotebook";
 export function CatJournalDrawer({
   onClose,
   entries,
+  onLocate,
 }: {
   onClose: () => void;
   entries: JournalEntry[];
+  onLocate: (m: PassageBookmark) => void;
 }) {
   return (
     <PaperDialog label="猫咖手账" className="shelf-dialog" onClose={onClose}>
@@ -43,6 +46,7 @@ export function CatJournalDrawer({
                   <b>记下的小行动</b>
                   <p>{e.microAction}</p>
                 </div>
+                {e.bookmark && <BookmarkTicket mark={e.bookmark} onLocate={() => onLocate(e.bookmark!)} />}
                 <div className="source-list">
                   {e.sources.map((s, i) => (
                     <a key={i} href={s.url} target="_blank" rel="noreferrer">

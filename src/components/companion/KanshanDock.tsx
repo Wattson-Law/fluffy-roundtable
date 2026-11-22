@@ -10,12 +10,14 @@ export function KanshanDock({
   count,
   onOpen,
   note,
+  bookmarked,
   onNote,
   onDismiss,
 }: {
   count: number;
   onOpen: () => void;
   note?: Turn;
+  bookmarked?: boolean;
   onNote: () => void;
   onDismiss: () => void;
 }) {
@@ -57,7 +59,7 @@ export function KanshanDock({
           <p>{note.text}</p>
           <div>
             <button onClick={onNote}>
-              回猫猫一句 <ArrowUpRight size={13} />
+              {bookmarked ? "继续聊这张书签" : "回猫猫一句"} <ArrowUpRight size={13} />
             </button>
             <button onClick={onDismiss}>先不聊</button>
           </div>

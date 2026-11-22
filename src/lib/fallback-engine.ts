@@ -188,6 +188,8 @@ export function buildFallbackDialogues(
         reason: "原帖精选评论",
       },
     };
+  } else {
+    lines[lines.length - 1] = { speaker: "shiba", mood: "calm", text: "这轮已读原帖没有返回可核对的精选评论。我不替读者编一种意见；另外找到的回答会单独列出。" };
   }
   /* 3.5 呼噜猫按住柴犬，保留圆桌互动感 */
   lines.push({
