@@ -152,9 +152,9 @@ export function verifyQuote(pool: TaggedPool, ref: QuoteRef): QuoteRef | null {
   const src = poolLookup(pool, ref.sourceTag);
   if (!src) return null;
   const norm = (s: string) => s.replace(/\s+/g, "");
-  const blob = norm(`${src.title}。${src.contentText}${src.comments.join("")}`);
+  const fields = [src.title,src.contentText,...src.comments].map(norm);
   const ex = norm(ref.excerpt ?? "");
-  if (!ex || ex.length < 6 || !blob.includes(ex)) return null;
+  if (!ex || ex.length < 6 || !fields.some(field=>field.includes(ex))) return null;
   return {
     ...ref,
     sourceTitle: src.title,
@@ -361,7 +361,7 @@ export function sanitizeDialogues(raw: LlmRaw, pool: TaggedPool): DialogueLine[]
     // 红线 1：绝不贬低知乎内容
     if (/(写得烂|写得差|毫无价值|没有价值|垃圾回答|质量差)/.test(text)) continue;
     // 红线 2：呼噜猫首句零建议
-    if (speaker === "purr_cat" && /(不过|但是|你可以|建议你|应该先)/.test(text)) continue;
+    if (speaker === "purr_cat" && /(不过|但是|你可以|建议你|应该先|你应该|你最好|你得先|你必须|不妨先|试着去)/.test(text)) continue;
     // 红线 3：不承诺剩下都没问题
     if (/(剩下的都没问题|其他都没问题)/.test(text)) continue;
 

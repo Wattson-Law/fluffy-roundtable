@@ -33,6 +33,8 @@ export interface ZhihuRawItem {
 
 /** 归一化后供前端消费的知乎条目 */
 export interface ZhihuItem {
+  /** Only bundled editorial samples carry this marker; never sent to Zhihu. */
+  origin?: "sample";
   id: string;
   title: string;
   /** zhihu_search 实测返回大段甚至完整回答正文，足以支撑真实阅读流 */
@@ -67,6 +69,7 @@ export interface HotItem {
 
 /** 静默浏览轨迹：展开回答或视口停留 >= 2.5s 自动写入 */
 export interface ReadingTrailItem {
+  origin?: "sample";
   id: string;
   title: string;
   contentText: string;
@@ -78,6 +81,7 @@ export interface ReadingTrailItem {
   /** 来源问题标题（从热榜/搜索进入时记录） */
   fromQuestion?: string;
   readAt: number;
+  visits?: number;
 }
 
 /** 《清醒猫咖手账》存档条目 */

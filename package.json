@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start -p 3100",
     "typecheck": "tsc --noEmit",
+    "test:companion:api": "node scripts/verify_companion_api.mjs",
+    "test:companion": "node --test scripts/companion.test.mjs",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {

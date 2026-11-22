@@ -5,11 +5,8 @@
  * 所有引文一律从原文逐字抽取，与 LLM 路径共用同一套防幻觉校验。
  */
 import "server-only";
-import {
-  computeRadar,
-  detectLeadGen,
-  locateSentence,
-} from "./llm";
+import { selectComment } from "./companion";
+import { computeRadar, detectLeadGen, locateSentence } from "./llm";
 import type {
   ControlCard,
   CuratedSource,
@@ -60,7 +57,7 @@ function judge(it: ZhihuItem): { verdict: string; span: string | null; reason: s
   }
   if (!hasEvi) {
     return {
-      verdict: "通篇没有一个具体数字或案例，给的是立场不是判断。",
+      verdict: "我在这段摘录里没找到可以单独核对的数字，暂时把它当成作者的看法。",
       span: locateSentence(txt, [/。/]),
       reason: "缺少可核验的数据支撑",
     };
@@ -104,8 +101,8 @@ export function buildFallbackDialogues(
     mood: "warm",
     text:
       mode === "topic_digest"
-        ? `你刚才那${CN[n] ?? n}篇我都跟着看了。信息一股脑涌过来，脑子有点糊是正常的，先坐下喝口热的。`
-        : `你刚才翻那${CN[n] ?? n}篇的十几分钟，我都在旁边陪着呢。越刷越乱不是你的问题，换谁看这几篇都会乱。`,
+        ? `你刚才那${CN[n] ?? n}篇我都跟着看了。有哪一句留在心里，我都愿意听。`
+        : `你刚才翻过的那${CN[n] ?? n}篇，我也看到了。一下子有那么多声音，没想清楚也没关系。`,
   });
 
   /* 2. 猫头鹰：拆解原文，带逐字引用 */
@@ -113,6 +110,11 @@ export function buildFallbackDialogues(
   const worst = judged.find((x) => x.j.span) ?? judged[0];
   if (worst) {
     const idx = trail.indexOf(worst.it);
+    const span = worst.j.span;
+    const excerpt =
+      span && (worst.it.contentText.includes(span) || worst.it.title.includes(span))
+        ? span
+        : worst.it.contentText.trim().slice(0, 110) || worst.it.title;
     lines.push({
       speaker: "owl",
       mood: "glasses",
@@ -120,10 +122,10 @@ export function buildFallbackDialogues(
         mode === "topic_digest"
           ? `我把这几篇逐句对了一遍。${worst.j.verdict}先理清谁在讲事实、谁在带情绪，再往下看。`
           : `我逐句核对过了。不是你看不懂，是它们没在回答你的问题。${worst.j.verdict}`,
-      quoteRef: worst.j.span
+      quoteRef: excerpt
         ? {
             sourceTag: `READ_${idx}`,
-            excerpt: worst.j.span,
+            excerpt,
             reason: worst.j.reason,
             sourceTitle: worst.it.title,
             sourceAuthor: worst.it.author,
@@ -153,7 +155,9 @@ export function buildFallbackDialogues(
   }
 
   /* 3. 柴犬炸毛护短（插嘴） */
-  const leadCount = judged.filter((x) => detectLeadGen(`${x.it.title}${x.it.contentText}`).length).length;
+  const leadCount = judged.filter(
+    (x) => detectLeadGen(`${x.it.title}${x.it.contentText}`).length,
+  ).length;
   const ventCount = judged.filter((x) => x.j.reason.includes("情绪")).length;
   const roast: string[] = [];
   if (leadCount) roast.push("有的绕半天是为了卖课");
@@ -163,9 +167,28 @@ export function buildFallbackDialogues(
     mood: "angry_protect",
     text: roast.length
       ? `好家伙！${roast.join("，")}，怪不得把你看懵了！别拉我，我这就去把真正走过这条路的人刨出来！`
-      : "这几篇绕来绕去都没说到正点上！等着，我去把真有干货的那种翻出来！",
+      : "我更想听听真走过这条路的人怎么说。让我看看有没有能跟原帖对照的经历。",
   });
 
+  // A selected comment is a reader's experience, not an author's claim or a new source.
+  const comment = selectComment(trail);
+  if (comment) {
+    const t = trail[comment.index];
+    lines[lines.length - 1] = {
+      speaker: "shiba",
+      mood: "angry_protect",
+      text: comment.contrast
+        ? "有位读者在评论区提了不同的看法。我把原话翻出来；这是一种声音，不是所有人的结论。"
+        : "我在评论区翻到一条补充。把读者的声音也摆上桌，但不把评论当作作者的结论。",
+      quoteRef: {
+        sourceTag: `READ_${comment.index}`,
+        sourceTitle: t.title,
+        sourceUrl: t.url,
+        excerpt: comment.excerpt,
+        reason: "原帖精选评论",
+      },
+    };
+  }
   /* 3.5 呼噜猫按住柴犬，保留圆桌互动感 */
   lines.push({
     speaker: "purr_cat",
@@ -240,16 +263,14 @@ export function buildShibaDeliver(sources: CuratedSource[], searchWord: string):
     mood: "happy",
     text: sources.length
       ? `我换成「${searchWord}」重新搜了一遍，刨出这${CN[sources.length] ?? sources.length}篇，每篇我都标了凭什么不一样，点进去能直接看原帖！`
-      : `我换关键词翻了一圈，暂时没找到够格的同路人帖子，不给你硬凑。等会儿我再去挖挖。`,
+      : `我换关键词翻了一圈，暂时没找到够格的同路人帖子，不给你硬凑。这轮先留空。`,
   };
 }
 
 export function buildKanshanClose(count: number, mode: RoundtableMode): DialogueLine {
   const n = CN[count] ?? String(count);
   const base =
-    count > 0
-      ? `上面这${n}篇大概率更贴近你今晚的处境，读完十来分钟。`
-      : `今晚的线索先理到这儿。`;
+    count > 0 ? `上面这${n}篇大概率更贴近你今晚的处境，读完十来分钟。` : `今晚的线索先理到这儿。`;
   const tail =
     mode === "decision_debate"
       ? "不用急着今晚就定终身，先把下面这张卡拿走。"
@@ -271,7 +292,11 @@ export function buildFollowUp(mode: RoundtableMode): FollowUpQuestion | undefine
 
 const THEME_BY_TOPIC: { re: RegExp; theme: ControlCard["catBadgeTheme"]; name: string }[] = [
   { re: /(AI|大模型|算法|编程|代码|芯片|技术)/i, theme: "cyber_gpu", name: "头顶显卡的赛博布偶猫" },
-  { re: /(工作|职业|转行|跳槽|考编|offer|薪资|秋招)/i, theme: "compass_orange", name: "背着指南针的橘猫侦探" },
+  {
+    re: /(工作|职业|转行|跳槽|考编|offer|薪资|秋招)/i,
+    theme: "compass_orange",
+    name: "背着指南针的橘猫侦探",
+  },
   { re: /(恋爱|感情|分手|婚姻|家人|关系)/, theme: "cocoa_ragdoll", name: "围着毛围巾的可可布偶" },
 ];
 
@@ -297,7 +322,12 @@ export function buildControlCard(
     ? `今晚只做一件事：挑上面第 1 篇读完，只记下作者交代的「起点和耗时」，不要记结论。`
     : `今晚只做一件事：把你的处境写成一句具体的话，明天拿这句话去搜，而不是搜那个大而空的词。`;
 
-  return { oneLineTakeaway: takeaway, microAction: action, catBadgeTheme: theme, catBadgeName: name };
+  return {
+    oneLineTakeaway: takeaway,
+    microAction: action,
+    catBadgeTheme: theme,
+    catBadgeName: name,
+  };
 }
 
 export { computeRadar };

@@ -8,6 +8,8 @@
  * 5. LLM 不可用/超时/输出不合格 → 规则引擎兜底，永不白屏
  */
 import { NextRequest, NextResponse } from "next/server";
+import { shapeRoles } from "@/lib/companion";
+import { createHash } from "node:crypto";
 import { TTL, cacheGet, cacheSet } from "@/lib/cache";
 import { searchGlobal, searchZhihu } from "@/lib/zhihu-client";
 import {
@@ -28,12 +30,7 @@ import {
   buildShibaDeliver,
   pickCuratedSources,
 } from "@/lib/fallback-engine";
-import type {
-  CuratedSource,
-  ReadingTrailItem,
-  RoundtableResult,
-  ZhihuItem,
-} from "@/types";
+import type { CuratedSource, ReadingTrailItem, RoundtableResult, ZhihuItem } from "@/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,23 +43,26 @@ interface Body {
 function trailToItem(t: ReadingTrailItem): ZhihuItem {
   return {
     id: t.id,
-    title: t.title,
-    contentText: t.contentText ?? "",
+    title: t.title.slice(0, 240),
+    contentText: t.contentText.slice(0, 1500),
     url: t.url,
     author: t.author ?? "知乎用户",
     authoritylevel: t.authoritylevel ?? 0,
     voteUpCount: t.voteUpCount ?? 0,
     commentCount: 0,
-    comments: t.comments ?? [],
+    comments: Array.isArray(t.comments)
+      ? t.comments
+          .filter((s): s is string => typeof s === "string")
+          .slice(0, 4)
+          .map((s) => s.slice(0, 300))
+      : [],
   };
 }
 
 /** 从已读帖提炼「避坑/实操」向检索词，供柴犬二次检索 */
 function buildShibaQuery(trail: ZhihuItem[], topicHint: string): string {
   const base =
-    topicHint.trim() ||
-    trail[0]?.title.replace(/[？?！!。，,]/g, " ").slice(0, 24) ||
-    "";
+    topicHint.trim() || trail[0]?.title.replace(/[？?！!。，,]/g, " ").slice(0, 24) || "";
   const core = base.replace(/(是什么体验|为什么|如何看待|怎么办|知乎)/g, "").trim();
   return `${core} 真实经验 避坑 复盘`.replace(/\s+/g, " ").trim();
 }
@@ -76,7 +76,21 @@ function buildExtQuery(trail: ZhihuItem[], topicHint: string): string {
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as Body;
-  const rawTrail = (body.trail ?? []).slice(-5);
+  // Only the selected public reading excerpts belong here. Local trial links and chat turns do not.
+  const rawTrail = Array.isArray(body?.trail)
+    ? body.trail
+        .slice(-5)
+        .filter(
+          (t) =>
+            t &&
+            t.origin !== "sample" &&
+            typeof t.id === "string" &&
+            typeof t.url === "string" &&
+            /^https?:\/\//i.test(t.url) &&
+            typeof t.title === "string" &&
+            typeof t.contentText === "string",
+        )
+    : [];
 
   if (rawTrail.length === 0) {
     return NextResponse.json(
@@ -86,11 +100,32 @@ export async function POST(req: NextRequest) {
   }
 
   const trail = rawTrail.map(trailToItem);
-  const topicHint = (body.topicHint ?? rawTrail[0]?.fromQuestion ?? trail[0].title).slice(0, 80);
+  const topicHint = (
+    typeof body?.topicHint === "string"
+      ? body.topicHint
+      : rawTrail.at(-1)?.fromQuestion || trail.at(-1)!.title
+  ).slice(0, 80);
   const mode = detectMode(trail, topicHint);
 
   // 同一组已读帖 + 同一主题，30 分钟内复用结果，防重复烧额度
-  const cacheKey = `rt:${mode}:${trail.map((t) => t.id).join("|")}`;
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify([
+        topicHint,
+        trail.map((t) => [
+          t.id,
+          t.url,
+          t.title,
+          t.contentText,
+          t.author,
+          t.authoritylevel,
+          t.voteUpCount,
+          t.comments,
+        ]),
+      ]),
+    )
+    .digest("hex");
+  const cacheKey = `rt:${mode}:${fingerprint}`;
   const cachedResult = cacheGet<RoundtableResult>(cacheKey);
   if (cachedResult) {
     return NextResponse.json({ ...cachedResult, meta: { ...cachedResult.meta, note: "命中缓存" } });
@@ -177,10 +212,7 @@ export async function POST(req: NextRequest) {
         }
 
         const sources = picked.length ? picked : fallbackSources;
-        const hasShibaDeliver = dialogues.some(
-          (d) => d.speaker === "shiba" && d.text.length > 10,
-        );
-        const hasClose = dialogues.at(-1)?.speaker === "kanshan";
+        const hasShibaDeliver = dialogues.some((d) => d.speaker === "shiba" && d.text.length > 10);
 
         result = {
           mode: (["anti_anxiety", "decision_debate", "topic_digest"] as const).includes(
@@ -190,9 +222,7 @@ export async function POST(req: NextRequest) {
             : mode,
           topicTitle: (raw.topicTitle || topicHint).slice(0, 80),
           radar,
-          dialogues: hasClose
-            ? dialogues
-            : [...dialogues, buildKanshanClose(sources.length, mode)],
+          dialogues: shapeRoles(dialogues, fallbackDialogues),
           curatedSources: sources,
           followUpQuestion:
             raw.followUpQuestion?.prompt && raw.followUpQuestion.choices?.length

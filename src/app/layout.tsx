@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./reading-room.css";
 
 export const metadata: Metadata = {
   title: "毛茸茸圆桌 · 在这儿刷知乎。刷完乱了，就问它们。",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#142126",
+  themeColor: "#faf9f3",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

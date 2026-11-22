@@ -1,207 +1,267 @@
 "use client";
-
-import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { AnimalRow, DialogueBubble, SourceTrailCards } from "./AnimalStage";
-import { BigScreenTrail } from "./BigScreenTrail";
+import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
+import { ArrowRight, ArrowUp, BookOpen, MessageSquare, Feather, X } from "lucide-react";
+import { art } from "@/lib/art";
+import { names, type Room } from "@/lib/companion";
+import { PaperDialog } from "@/components/companion/PaperDialog";
+import { RoomScene, Evidence, Sources } from "./AnimalStage";
 import { ControlCard } from "./ControlCard";
-import type { ReadingTrailItem, RoundtableResult, Speaker } from "@/types";
 
-const CABIN_BG = "/assets/images/fluffy-roundtable-hq-backview.png";
-
-const MODE_LABEL: Record<RoundtableResult["mode"], string> = {
-  anti_anxiety: "脱水拆解模式",
-  decision_debate: "正反决策模式",
-  topic_digest: "热点速览模式",
-};
-
-/** 篝火小屋主容器：大光幕 + 圆桌剧场 + 掌控卡 */
 export function CabinModal({
-  open,
-  onClose,
-  trail,
-  result,
+  room,
   loading,
   error,
-  onCommit,
-  committed,
+  draft,
+  setDraft,
+  onClose,
   onRetry,
+  onNext,
+  onSay,
+  onChoose,
+  onCommit,
+  choosing,
 }: {
-  open: boolean;
-  onClose: () => void;
-  trail: ReadingTrailItem[];
-  result: RoundtableResult | null;
+  room?: Room;
   loading: boolean;
   error: string | null;
-  onCommit: () => void;
-  committed: boolean;
+  draft: string;
+  setDraft: (s: string) => void;
+  onClose: () => void;
   onRetry: () => void;
+  onNext: () => void;
+  onSay: (s: string) => void;
+  onChoose: (c: { id: string; label: string }) => void;
+  onCommit: () => void;
+  choosing: boolean;
 }) {
-  const [revealed, setRevealed] = useState(0);
-  const [followUpAnswer, setFollowUpAnswer] = useState<{
-    text: string;
-    microAction: string;
-  } | null>(null);
-
-  const dialogues = result?.dialogues ?? [];
-
-  // 逐轮演绎：每 1.1 秒揭示一条，营造围炉夜话的节奏感
-  useEffect(() => {
-    if (!result) {
-      setRevealed(0);
-      setFollowUpAnswer(null);
+  const reduced = useReducedMotion();
+  const [leaving, setLeaving] = useState(false);
+  const closing = useRef(0);
+  function fold() {
+    if (leaving) return;
+    if (reduced) {
+      onClose();
       return;
     }
-    setRevealed(1);
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 2; i <= dialogues.length; i++) {
-      timers.push(setTimeout(() => setRevealed(i), (i - 1) * 1100));
+    setLeaving(true);
+    closing.current = window.setTimeout(onClose, 340);
+  }
+  useEffect(() => () => clearTimeout(closing.current), []);
+  const [settled, setSettled] = useState(!!room?.turns.length || !!reduced),
+    [cardOpen, setCardOpen] = useState(!!room?.committed),
+    [showLog, setShowLog] = useState(false);
+  const logRef = useRef<HTMLDivElement>(null),
+    flow = useRef<HTMLDivElement>(null),
+    cardRef = useRef<HTMLDivElement>(null),
+    composing = useRef(false);
+  useEffect(() => {
+    if (settled) return;
+    if (reduced) {
+      setSettled(true);
+      return;
     }
-    return () => timers.forEach(clearTimeout);
-  }, [result, dialogues.length]);
-
-  const speaking: Speaker | null = useMemo(() => {
-    if (!result || revealed === 0) return null;
-    if (revealed >= dialogues.length) return null;
-    return dialogues[revealed - 1]?.speaker ?? null;
-  }, [result, revealed, dialogues]);
-
-  const allRevealed = result != null && revealed >= dialogues.length;
-  // 柴犬最后一次发言之后插入溯源卡
-  const shibaLastIdx = useMemo(() => {
-    for (let i = dialogues.length - 1; i >= 0; i--) {
-      if (dialogues[i].speaker === "shiba") return i;
-    }
-    return -1;
-  }, [dialogues]);
-
-  const chooseFollowUp = async (c: { id: string; label: string }) => {
-    try {
-      const res = await fetch("/api/roundtable/follow-up", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          choiceId: c.id,
-          choiceLabel: c.label,
-          topicTitle: result?.topicTitle ?? "",
-        }),
-      });
-      const j = await res.json();
-      setFollowUpAnswer({ text: j.dialogue?.text ?? "", microAction: j.microAction ?? "" });
-    } catch {
-      /* 追问失败不影响主卡片 */
-    }
-  };
-
+    const timer = setTimeout(() => setSettled(true), 2320);
+    return () => clearTimeout(timer);
+  }, [settled, reduced]);
+  const r = room?.result,
+    turns = room?.turns,
+    started = !!room?.cursor;
+  const line = turns?.findLast((t) => t.speaker !== "user");
+  const count = turns?.length ?? 0,
+    finished = !!room && !!r && room.cursor >= r.dialogues.length;
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [count, showLog]);
+  useEffect(() => {
+    if (cardOpen) cardRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
+  }, [cardOpen]);
+  const inputs = !!room && started;
+  function submit() {
+    if (!inputs || !draft.trim() || composing.current) return;
+    onSay(draft);
+    setDraft("");
+  }
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/55 backdrop-blur-sm"
-          />
-
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 260, damping: 30 }}
-            className="cabin-bg fixed inset-y-0 right-0 z-50 flex w-full flex-col sm:w-[580px]"
-            style={{
-              backgroundImage: `linear-gradient(rgba(20,33,38,0.82), rgba(16,26,22,0.93)), url(${CABIN_BG})`,
-            }}
-          >
-            {/* 篝火暖光 */}
-            <div className="cabin-ember-glow pointer-events-none absolute inset-x-0 bottom-0 h-1/2 animate-ember" />
-
-            {/* 头部 */}
-            <div className="relative flex items-center gap-2 border-b border-ember-400/15 px-4 py-3">
-              <span className="text-lg">🔥</span>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-[14px] font-bold text-paper-50">毛茸茸圆桌</h2>
-                <p className="truncate text-[10.5px] text-paper-50/55">
-                  {result ? (
-                    <>
-                      {MODE_LABEL[result.mode]} · {result.topicTitle}
-                    </>
-                  ) : (
-                    "围着篝火，聊聊你刚才看的那几篇"
-                  )}
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-paper-50/60 transition hover:bg-white/10 hover:text-paper-50"
-                aria-label="关闭小屋"
-              >
-                <X size={16} />
-              </button>
+    <PaperDialog
+      label="毛茸茸小屋"
+      className={"room-dialog" + (leaving ? " folding" : "")}
+      onClose={fold}
+    >
+      <div
+        className="cabin-paper"
+        inert={leaving}
+        style={{ backgroundImage: `url("${art.shell}"), url("${art.clouds}")` }}
+      >
+        <div className="roof-words">THE READING ROOM</div>
+        <header className="room-title">
+          <h2>毛茸茸圆桌</h2>
+          <button className="icon-b" onClick={fold} aria-label="关闭小屋">
+            <X size={17} />
+          </button>
+        </header>
+        <div className="room-context">
+          <BookOpen size={14} />
+          <span>{room?.context.at(-1)?.origin === "sample" ? "本地试读" : "刚刚读到"}</span>
+          <b>{room?.title ?? "还没有夹上书签"}</b>
+        </div>
+        <div className="room-flow" ref={flow}>
+          <RoomScene line={line} settled={settled} />
+          {!room ? (
+            <div className="gather-note">
+              <small>窗边的看山</small>
+              <p>书页还是空的。先去读一篇回答，等你回来，我们就从那篇聊起。</p>
             </div>
-
-            {/* 内容区 */}
-            <div className="scroll-thin scroll-thin-warm relative min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-              {trail.length > 0 && <BigScreenTrail trail={trail} radar={result?.radar} />}
-
-              <AnimalRow speaking={speaking} />
-
-              {loading && (
-                <div className="flex items-center gap-2 py-6 text-[12.5px] text-paper-50/55">
-                  <Loader2 size={13} className="animate-spin" />
-                  四小只正在看你刚翻过的那几篇，并去知乎重新找真话…
-                </div>
-              )}
-
-              {error && (
-                <div className="cabin-panel rounded-xl p-3.5">
-                  <p className="text-[12.5px] leading-relaxed text-paper-50/85">{error}</p>
-                  <button
-                    onClick={onRetry}
-                    className="mt-2.5 rounded-full border border-ember-400/40 px-3 py-1 text-[11.5px] text-paper-50 hover:bg-ember-400/15"
-                  >
-                    再试一次
+          ) : !started ? (
+            <div className="gather-note">
+              <small>
+                <Feather size={13} /> 看山抄下这一句
+              </small>
+              <p>
+                {room.context.at(-1)?.contentText.trim().slice(0, 76) || room.context.at(-1)?.title}
+              </p>
+              <span>本轮带进来 {room.context.length} 篇。你来决定什么时候开聊。</span>
+            </div>
+          ) : (
+            <>
+              {line?.quoteRef && <Evidence quote={line.quoteRef} />}
+              {line?.speaker === "shiba" && r && <Sources sources={r.curatedSources} />}
+              <div className="transcript">
+                <div className="transcript-head">
+                  <strong>
+                    <MessageSquare size={15} /> 聊天记录
+                  </strong>
+                  <button onClick={() => setShowLog(!showLog)} aria-expanded={showLog}>
+                    {showLog ? "收起" : "展开全部"} · {count}
                   </button>
                 </div>
-              )}
-
-              {dialogues.slice(0, revealed).map((d, i) => (
-                <div key={i} className="space-y-2">
-                  <DialogueBubble line={d} delay={0} />
-                  {i === shibaLastIdx && result && (
-                    <SourceTrailCards sources={result.curatedSources} delay={0.25} />
-                  )}
+                <div
+                  className={"chat-log " + (showLog ? "full" : "")}
+                  ref={logRef}
+                  role="log"
+                  aria-label="聊天记录"
+                  aria-live="off"
+                >
+                  {(showLog ? turns : turns?.slice(-2))?.map((m) => (
+                    <div
+                      key={m.id}
+                      data-kind={m.kind}
+                      className={m.speaker === "user" ? "user-line" : ""}
+                    >
+                      <b>
+                        {m.speaker === "user" ? "你" : names[m.speaker]}
+                        {m.kind === "note" ? " · 主动便签" : ""}
+                      </b>
+                      <span>{m.text}</span>
+                      {showLog && m.quoteRef && <Evidence quote={m.quoteRef} />}
+                    </div>
+                  ))}
                 </div>
+              </div>
+            </>
+          )}
+          {room && r && started && (
+            <details className="context-details">
+              <summary>本轮阅读与原帖 · {room.context.length}</summary>
+              {room.context.map((t) => (
+                <a key={t.url} href={t.url} target="_blank" rel="noreferrer">
+                  {t.title} ↗
+                </a>
               ))}
-
-              {result && allRevealed && (
-                <ControlCard
-                  card={result.controlCard}
-                  followUp={result.followUpQuestion}
-                  followUpAnswer={followUpAnswer}
-                  onChoose={chooseFollowUp}
-                  onCommit={onCommit}
-                  committed={committed}
-                  delay={0.15}
+              <p>
+                {r.radar.summaryTag}
+                {room.context.at(-1)?.origin !== "sample" &&
+                  ` · 干货 ${r.radar.drynessScore} / 情绪 ${r.radar.anxietyScore} / 引流线索 ${r.radar.adRiskScore}`}
+              </p>
+              {r.meta.degraded && <p>{r.meta.note || "本轮仅使用已取得的材料。"}</p>}
+            </details>
+          )}
+          {cardOpen && room && finished && (
+            <div ref={cardRef}>
+              <ControlCard room={room} busy={choosing} onChoose={onChoose} onCommit={onCommit} />
+            </div>
+          )}
+          {error && (
+            <p className="room-error" role="status">
+              {error} {room && !r && <button onClick={onRetry}>再试一次</button>}
+            </p>
+          )}
+        </div>
+        <footer className="room-footer">
+          {!room ? (
+            <button className="room-continue" onClick={fold}>
+              回去读一篇 <ArrowRight size={17} />
+            </button>
+          ) : !settled ? (
+            <button className="room-continue" onClick={() => setSettled(true)}>
+              跳过入场 <ArrowRight size={17} />
+            </button>
+          ) : !started ? (
+            <button className="room-continue" disabled={!r || loading} onClick={onNext}>
+              {loading ? "看山正在翻阅原帖…" : r ? "开聊 · 听呼噜猫说" : "等待原帖整理"}{" "}
+              <ArrowRight size={17} />
+            </button>
+          ) : (
+            <>
+              {!finished ? (
+                <button
+                  className="room-continue"
+                  onClick={() => {
+                    setShowLog(false);
+                    onNext();
+                    flow.current?.scrollTo({ top: 0 });
+                  }}
+                >
+                  听下一句{" "}
+                  <small>
+                    {room.cursor} / {r?.dialogues.length}
+                  </small>
+                  <ArrowRight size={15} />
+                </button>
+              ) : (
+                !cardOpen && (
+                  <button className="room-continue" onClick={() => setCardOpen(true)}>
+                    接过看山的掌控卡 <ArrowRight size={15} />
+                  </button>
+                )
+              )}
+              <form
+                className="chat-compose"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  submit();
+                }}
+              >
+                <input
+                  value={draft}
+                  maxLength={400}
+                  onCompositionStart={() => {
+                    composing.current = true;
+                  }}
+                  onCompositionEnd={() => {
+                    composing.current = false;
+                  }}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      (e.nativeEvent.isComposing ||
+                        e.nativeEvent.keyCode === 229 ||
+                        composing.current)
+                    )
+                      e.preventDefault();
+                  }}
+                  onChange={(e) => setDraft(e.target.value)}
+                  aria-label="我也说一句"
+                  placeholder="我也说一句…"
                 />
-              )}
-
-              {result?.meta.note && (
-                <p className="pb-1 text-center text-[10px] text-paper-50/35">
-                  {result.meta.note}
-                </p>
-              )}
-            </div>
-
-            <div className="relative border-t border-ember-400/15 px-4 py-2 text-center text-[9.5px] leading-relaxed text-paper-50/35">
-              所有引用均逐字来自知乎开放平台实时返回的真实原文，可点击溯源
-            </div>
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+                <button disabled={!draft.trim()} aria-label="发送消息">
+                  <ArrowUp size={18} />
+                </button>
+              </form>
+            </>
+          )}
+        </footer>
+      </div>
+    </PaperDialog>
   );
 }

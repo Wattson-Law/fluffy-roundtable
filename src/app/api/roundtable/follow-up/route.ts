@@ -14,10 +14,34 @@ interface Body {
 }
 
 export async function POST(req: NextRequest) {
-  const { choiceId = "", choiceLabel = "", topicTitle = "" } =
-    (await req.json().catch(() => ({}))) as Body;
+  const {
+    choiceId = "",
+    choiceLabel = "",
+    topicTitle = "",
+  } = ((await req.json().catch(() => ({}))) ?? {}) as Body;
 
+  if (
+    typeof choiceId !== "string" ||
+    typeof choiceLabel !== "string" ||
+    typeof topicTitle !== "string"
+  )
+    return NextResponse.json({ message: "请选择本轮卡片上的方向。" }, { status: 400 });
+  const longTerm = choiceId === "long_term" || /三年|复利|长期/.test(choiceLabel);
   const shortTerm = choiceId === "short_term" || /现金流|确定性|一年|短期/.test(choiceLabel);
+
+  if (!shortTerm && !longTerm) {
+    const preference = String(choiceLabel).trim().slice(0, 45);
+    if (!preference) return NextResponse.json({ message: "请先选一个方向。" }, { status: 400 });
+    return NextResponse.json({
+      dialogue: {
+        speaker: "kanshan",
+        mood: "calm",
+        text: `我把你选的「${preference}」放在卡片上。它是你这次在意的条件，不是非这样不可。`,
+      },
+      microAction: `用三分钟，写下一件能帮你核对「${preference}」的小事。`,
+      topicTitle,
+    });
+  }
 
   const line: DialogueLine = {
     speaker: "kanshan",

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { useReadingTracker } from "./useReadingTracker";
 import { AnswerCard } from "./AnswerCard";
 import type { ZhihuItem } from "@/types";
 
@@ -13,6 +14,8 @@ export function QuestionDetail({
   onBack,
   onRead,
   degradedReason,
+  readerActive,
+  sample = false,
 }: {
   title: string;
   items: ZhihuItem[];
@@ -21,7 +24,10 @@ export function QuestionDetail({
   onBack: () => void;
   onRead: (item: ZhihuItem) => void;
   degradedReason?: string;
+  readerActive: boolean;
+  sample?: boolean;
 }) {
+  const { list, record } = useReadingTracker(items, readerActive && !loading, onRead);
   return (
     <div>
       <button
@@ -34,10 +40,12 @@ export function QuestionDetail({
       <div className="zh-card mb-3 rounded-lg p-4">
         <h1 className="text-[19px] font-bold leading-snug text-zh-text">{title}</h1>
         <p className="mt-1.5 text-[12.5px] text-zh-sub">
-          {loading ? "正在拉取真实回答…" : `${items.length} 个来自知乎的真实回答`}
-          <span className="ml-2 text-ember-600">
-            🦊 刘看山在旁边陪你看，读过的会自动记下
-          </span>
+          {loading
+            ? "正在拉取真实回答…"
+            : sample
+              ? "本地试读 · 伴读编辑室原创，不是知乎回答"
+              : `${items.length} 个来自知乎的真实回答`}
+          <span className="ml-2 text-[#637659]">展开全文，或停留片刻，看山会夹一张书签。</span>
         </p>
       </div>
 
@@ -48,18 +56,17 @@ export function QuestionDetail({
         </div>
       ) : items.length === 0 ? (
         <div className="zh-card rounded-lg p-8 text-center text-[13px] text-zh-sub">
-          这个问题暂时没搜到回答{degradedReason ? `（${degradedReason}）` : ""}，
-          换个关键词试试。
+          这个问题暂时没搜到回答{degradedReason ? `（${degradedReason}）` : ""}， 换个关键词试试。
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2.5" ref={list}>
           {items.map((it, i) => (
             <AnswerCard
               key={it.id || it.url}
               item={it}
               index={i}
               recorded={recordedUrls.has(it.url)}
-              onRead={onRead}
+              onRead={record}
             />
           ))}
         </div>

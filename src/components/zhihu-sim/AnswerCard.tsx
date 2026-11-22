@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink, MessageSquare, ShieldCheck } from "lucide-react";
 import type { ZhihuItem } from "@/types";
 
@@ -20,54 +20,17 @@ export function AnswerCard({
   onRead: (item: ZhihuItem) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const ref = useRef<HTMLElement>(null);
-  const firedRef = useRef(false);
-
-  // 视口停留 2.5s 自动记入轨迹
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || firedRef.current) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
-          timer = setTimeout(() => {
-            if (!firedRef.current) {
-              firedRef.current = true;
-              onRead(item);
-            }
-          }, 2500);
-        } else if (timer) {
-          clearTimeout(timer);
-          timer = null;
-        }
-      },
-      { threshold: [0, 0.5, 1] },
-    );
-
-    io.observe(el);
-    return () => {
-      io.disconnect();
-      if (timer) clearTimeout(timer);
-    };
-  }, [item, onRead]);
-
   const toggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (next && !firedRef.current) {
-      firedRef.current = true;
-      onRead(item);
-    }
+    if (!expanded) onRead(item);
+    setExpanded(!expanded);
   };
 
   const long = item.contentText.length > 220;
 
   return (
     <article
-      ref={ref}
-      className={`zh-card rounded-lg p-4 transition ${
+      data-read-index={index}
+      className={`answer-paper zh-card rounded-lg p-4 transition ${
         recorded ? "border-ember-400/70 shadow-[0_0_0_1px_rgba(255,210,122,0.35)]" : ""
       }`}
     >
@@ -109,7 +72,7 @@ export function AnswerCard({
 
         {recorded && (
           <span className="shrink-0 rounded-full bg-ember-400/20 px-2 py-0.5 text-[10px] text-ember-600">
-            🦊 已记下
+            看山已记下
           </span>
         )}
       </div>
@@ -154,21 +117,26 @@ export function AnswerCard({
 
       {/* 操作栏 */}
       <div className="mt-3 flex items-center gap-3 text-[12px] text-zh-sub">
-        <span className="zh-vote rounded-full px-2.5 py-1 font-medium">
-          ▲ 赞同 {item.voteUpCount.toLocaleString()}
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <MessageSquare size={12} />
-          {item.commentCount}
-        </span>
+        {!item.origin && (
+          <>
+            <span className="zh-vote rounded-full px-2.5 py-1 font-medium">
+              ▲ 赞同 {item.voteUpCount.toLocaleString()}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <MessageSquare size={12} />
+              {item.commentCount}
+            </span>
+          </>
+        )}
         <a
           href={item.url}
+          onClick={() => onRead(item)}
           target="_blank"
           rel="noreferrer"
           className="ml-auto inline-flex items-center gap-1 hover:text-zh-blue"
         >
           <ExternalLink size={12} />
-          查看原帖
+          {item.origin ? "打开试读原文" : "查看原帖"}
         </a>
       </div>
     </article>
