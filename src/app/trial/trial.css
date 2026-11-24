@@ -1,0 +1,318 @@
+/* A folded letter on the same paper as the reading desk. The cabin itself uses its production CSS. */
+.trial-page {
+  min-height: 100dvh;
+  background: radial-gradient(ellipse at 20% 18%, #ecefe3 0, transparent 53%), var(--sheet);
+}
+.trial-mast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px max(6%, calc((100% - 960px) / 2));
+  border-bottom: 1px solid var(--line);
+}
+.trial-mast span,
+.trial-mast small,
+.trial-primary,
+.trial-secondary,
+.trial-note,
+.trial-actions,
+.trial-facilitator summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.trial-mast span {
+  font: 650 20px var(--serif);
+  letter-spacing: 0.1em;
+}
+.trial-mast small,
+.trial-kicker,
+.trial-aside,
+.trial-end {
+  color: var(--soft);
+}
+.trial-mast small {
+  font-size: 12px;
+}
+.trial-main {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: clamp(26px, 8vh, 88px) 22px 50px;
+}
+.trial-sheet {
+  position: relative;
+  border: 1px solid #d1d8c7;
+  border-top: 3px solid var(--forest);
+  padding: clamp(25px, 5.3vw, 62px);
+  background: #fffef9;
+  border-radius: 3px 3px 16px 3px;
+  box-shadow:
+    3px 4px 0 -1px #edf0e6,
+    3px 4px 0 0 #d5dbcc,
+    0 14px 40px #3849310a;
+}
+.trial-cover {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(160px, 0.8fr);
+  gap: clamp(15px, 4vw, 52px);
+  align-items: center;
+}
+.trial-kicker {
+  margin: 0 0 15px;
+  color: var(--forest);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+}
+.trial-sheet h1 {
+  font: 700 clamp(28px, 4.3vw, 46px) / 1.25 var(--serif);
+  letter-spacing: 0.045em;
+}
+.trial-sheet h1:focus {
+  outline: none;
+}
+.trial-lead {
+  margin: 20px 0 14px;
+  max-width: 40em;
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.85;
+}
+.trial-aside,
+.trial-facilitator p {
+  margin: 12px 0;
+  max-width: 48em;
+  font-size: 14px;
+  line-height: 1.85;
+}
+.trial-portrait {
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 62%, #e9eada, transparent 72%);
+}
+.trial-portrait img {
+  display: block;
+  width: min(100%, 220px);
+  height: auto;
+  margin: 0 auto;
+}
+.trial-portrait figcaption {
+  font: 14px/1.7 var(--serif);
+  color: var(--soft);
+  letter-spacing: 0.09em;
+  margin-top: 7px;
+}
+.trial-actions {
+  flex-wrap: wrap;
+  margin-top: 24px;
+  gap: 10px;
+}
+.trial-primary,
+.trial-secondary {
+  min-height: 44px;
+  width: fit-content;
+  justify-content: center;
+  border-radius: 7px;
+  font-size: 15px;
+  padding: 10px 19px;
+  font-weight: 650;
+}
+.trial-primary {
+  background: var(--forest);
+  color: #fffdf7;
+}
+.trial-primary:not(:disabled):hover {
+  background: #264a3a;
+}
+.trial-cover .trial-primary {
+  margin-top: 22px;
+}
+.trial-secondary {
+  border: 1px solid #becbbb;
+  color: var(--forest);
+}
+.trial-note {
+  margin: 20px 0;
+  align-items: flex-start;
+  background: #f1f4ea;
+  border-inline-start: 3px solid #a6b69c;
+  padding: 12px 15px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.trial-note svg {
+  flex: none;
+  margin-top: 4px;
+  color: var(--forest);
+}
+.trial-end,
+.trial-facilitator {
+  margin-top: 22px;
+  padding: 0 3px;
+  font-size: 13px;
+}
+.trial-end {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.trial-end button {
+  color: var(--forest);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  min-height: 44px;
+}
+.trial-facilitator {
+  border-bottom: 1px solid var(--line);
+}
+.trial-facilitator summary {
+  cursor: pointer;
+  min-height: 48px;
+  width: fit-content;
+  color: var(--forest);
+}
+.trial-facilitator summary::-webkit-details-marker {
+  display: none;
+}
+.trial-facilitator[open] summary svg:last-child {
+  transform: rotate(180deg);
+}
+.trial-facilitator[open] {
+  padding-bottom: 16px;
+}
+.trial-file {
+  display: block;
+  font-weight: 600;
+}
+.trial-file input {
+  display: block;
+  max-width: 100%;
+  margin: 7px 0 18px;
+}
+.trial-tally {
+  font-size: 14px;
+  width: 100%;
+  text-align: center;
+}
+.trial-tally caption {
+  padding: 6px 0 12px;
+  text-align: left;
+  color: var(--soft);
+}
+.trial-tally :is(th, td) {
+  padding: 6px 3px;
+  border-top: 1px solid var(--line);
+}
+.trial-tally th:first-child {
+  text-align: left;
+}
+.trial-ballot {
+  margin: 20px 0;
+}
+.trial-ballot fieldset {
+  margin: 16px 0;
+  min-width: 0;
+}
+.trial-ballot legend {
+  font-weight: 650;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.trial-ballot legend span {
+  color: var(--leaf);
+}
+.trial-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 7px;
+}
+.trial-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 7px 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.trial-options input {
+  accent-color: var(--forest);
+  width: 15px;
+  height: 15px;
+}
+.trial-options label:has(:checked) {
+  border-color: var(--forest);
+  background: var(--pale);
+}
+.trial-options label:focus-within {
+  outline: 2px solid var(--forest);
+  outline-offset: 1px;
+}
+.trial-receipt {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 19px;
+  margin: 23px 0;
+}
+.trial-receipt section {
+  padding: 14px;
+  background: var(--pale);
+}
+.trial-receipt h2 {
+  font: 650 17px/1.6 var(--serif);
+  margin-bottom: 7px;
+}
+.trial-receipt dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  border-top: 1px dashed #c6d0be;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.trial-receipt dd {
+  text-align: right;
+  font-weight: 650;
+}
+@media (max-width: 600px) {
+  .trial-main {
+    padding: 23px 14px 38px;
+  }
+  .trial-sheet {
+    padding: 23px 17px;
+  }
+  .trial-mast {
+    padding: 13px 18px;
+  }
+  .trial-cover {
+    display: block;
+  }
+  .trial-cover h1,
+  .trial-cover .trial-kicker {
+    max-width: calc(100% - 92px);
+  }
+  .trial-cover .trial-lead {
+    margin-top: 25px;
+  }
+  .trial-portrait {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 82px;
+  }
+  .trial-portrait figcaption {
+    display: none;
+  }
+  .trial-receipt {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .trial-options {
+    gap: 5px;
+  }
+  .trial-options label {
+    padding: 6px 8px;
+  }
+}

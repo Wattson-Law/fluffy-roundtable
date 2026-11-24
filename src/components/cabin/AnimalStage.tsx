@@ -47,6 +47,9 @@ export function RoomScene({ line, settled }: { line?: Turn; settled: boolean }) 
       className={"room-scene " + (speaker ? "is-speaking" : "is-gathering")}
       style={{ backgroundImage: `url("${art.room}")` }}
     >
+      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {caption && voice ? `${names[voice]}：${caption.text}` : ""}
+      </span>
       <span className="scene-label">
         <i />
         {speaker ? "圆桌现场" : "伙伴入座"}
@@ -72,7 +75,7 @@ export function RoomScene({ line, settled }: { line?: Turn; settled: boolean }) 
               />
             </AnimatePresence>
           </div>
-          <div className="speech-paper" data-speaker={voice} aria-live="polite">
+          <div className="speech-paper" data-speaker={voice}>
             <strong>{names[voice]}</strong>
             <small>{duties[voice]}</small>
             <p>{caption.text}</p>

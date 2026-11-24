@@ -131,6 +131,10 @@ button:disabled {
   color: var(--soft);
   font-size: 12px;
 }
+.shelf-breadcrumb .trial-invite {
+  margin-inline-start: auto;
+  min-height: 28px;
+}
 .shelf-breadcrumb i {
   color: #a3aa99;
 }

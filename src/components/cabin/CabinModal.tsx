@@ -10,47 +10,44 @@ import { PaperDialog } from "@/components/companion/PaperDialog";
 import { RoomScene, Evidence, Sources } from "./AnimalStage";
 import { ControlCard } from "./ControlCard";
 
+type ArticleControls = {
+  loading: boolean;
+  error: string | null;
+  onPersonal: () => void;
+  onRetry: () => void;
+  onNext: () => void;
+  onChoose: (c: { id: string; label: string }) => void;
+  onCommit: () => void;
+  onLocate: (m: PassageBookmark) => void;
+  choosing: boolean;
+};
+
 export function CabinModal({
   room,
-  loading,
-  error,
   draft,
   setDraft,
   onClose,
   onFoldStart,
   onDraftStart,
-  onPersonal,
-  onRetry,
-  onNext,
   onSay,
-  onChoose,
-  onCommit,
-  onLocate,
-  choosing,
+  article,
 }: {
   room?: Room;
-  loading: boolean;
-  error: string | null;
   draft: string;
   setDraft: (s: string) => void;
   onClose: () => void;
-  onFoldStart: () => void;
-  onDraftStart: () => void;
-  onPersonal: () => void;
-  onRetry: () => void;
-  onNext: () => void;
+  onFoldStart?: () => void;
+  onDraftStart?: () => void;
   onSay: (s: string) => void;
-  onChoose: (c: { id: string; label: string }) => void;
-  onCommit: () => void;
-  onLocate: (m: PassageBookmark) => void;
-  choosing: boolean;
+  article?: ArticleControls;
 }) {
+  const { loading, error } = article ?? {};
   const reduced = useReducedMotion();
   const [leaving, setLeaving] = useState(false);
   const closing = useRef(0);
   function fold() {
     if (leaving) return;
-    onFoldStart();
+    onFoldStart?.();
     if (reduced) {
       onClose();
       return;
@@ -96,8 +93,8 @@ export function CabinModal({
   }, [cardOpen]);
   function locateQuote(q: QuoteRef) {
     const m = room?.bookmark;
-    return m && q.kind === "bookmark" && q.sourceUrl === m.url && q.excerpt === m.excerpt
-      ? () => onLocate(m)
+    return article && m && q.kind === "bookmark" && q.sourceUrl === m.url && q.excerpt === m.excerpt
+      ? () => article.onLocate(m)
       : undefined;
   }
   const pinnedEvidence = !!(line?.quoteRef && locateQuote(line.quoteRef));
@@ -141,11 +138,11 @@ export function CabinModal({
         </div>
         <div className="room-flow" ref={flow}>
           <RoomScene line={line} settled={settled} />
-          {room?.bookmark && (!readerLed || pinnedEvidence) && (
+          {article && room?.bookmark && (!readerLed || pinnedEvidence) && (
             <BookmarkTicket
               verified={pinnedEvidence}
               mark={room.bookmark}
-              onLocate={() => onLocate(room.bookmark!)}
+              onLocate={() => article.onLocate(room.bookmark!)}
             />
           )}
           {personal && !started ? (
@@ -156,7 +153,7 @@ export function CabinModal({
               <p>来啦，坐会儿。今天过得怎么样？</p>
               <span>说自己的事也行，不用先带一篇文章。</span>
             </div>
-          ) : !started && room?.bookmark ? null : !started && room ? (
+          ) : !started && room?.bookmark ? null : !started && room && article ? (
             <div className="gather-note">
               <small>
                 <Feather size={13} /> 看山抄下这一句
@@ -172,7 +169,7 @@ export function CabinModal({
                     : "选文章导读时，才提交本轮摘录。"}
                 也可以不聊文章。
               </span>
-              <button className="paper-link" onClick={onPersonal}>
+              <button className="paper-link" onClick={article.onPersonal}>
                 不带文章，去窗边坐坐 →
               </button>
             </div>
@@ -222,11 +219,14 @@ export function CabinModal({
               )}
             </>
           )}
-          {room && !personal && (started || readerLed) && (
+          {article && room && !personal && (started || readerLed) && (
             <details className="context-details">
               <summary>本轮阅读与原帖 · {room.context.length}</summary>
               {readerLed && room.bookmark && !pinnedEvidence && (
-                <BookmarkTicket mark={room.bookmark} onLocate={() => onLocate(room.bookmark!)} />
+                <BookmarkTicket
+                  mark={room.bookmark}
+                  onLocate={() => article.onLocate(room.bookmark!)}
+                />
               )}
               {room.context.map((t) => (
                 <a key={t.url} href={t.url} target="_blank" rel="noreferrer">
@@ -241,7 +241,7 @@ export function CabinModal({
                 </p>
               )}
               {!r && readerLed && (
-                <button className="paper-link" onClick={onRetry} disabled={loading}>
+                <button className="paper-link" onClick={article.onRetry} disabled={loading}>
                   {loading ? "正在整理原文…" : "单独整理这篇的资料 →"}
                 </button>
               )}
@@ -251,19 +251,24 @@ export function CabinModal({
                   查看这篇的掌控卡 →
                 </button>
               )}
-              <button className="paper-link" onClick={onPersonal}>
+              <button className="paper-link" onClick={article.onPersonal}>
                 不带文章，去窗边坐坐 →
               </button>
             </details>
           )}
-          {cardOpen && room && cardAvailable && (
+          {article && cardOpen && room && cardAvailable && (
             <div ref={cardRef}>
-              <ControlCard room={room} busy={choosing} onChoose={onChoose} onCommit={onCommit} />
+              <ControlCard
+                room={room}
+                busy={article.choosing}
+                onChoose={article.onChoose}
+                onCommit={article.onCommit}
+              />
             </div>
           )}
-          {error && (!readerLed || cardOpen) && (
+          {article && error && (!readerLed || cardOpen) && (
             <p className="room-error" role="status">
-              {error} {room && !r && <button onClick={onRetry}>再试一次</button>}
+              {error} {room && !r && <button onClick={article.onRetry}>再试一次</button>}
             </p>
           )}
         </div>
@@ -275,23 +280,23 @@ export function CabinModal({
           ) : (
             room && (
               <>
-                {!readerLed && !started && (
+                {article && !readerLed && !started && (
                   <button
                     className="room-continue"
                     disabled={loading || !!draft.trim()}
-                    onClick={onNext}
+                    onClick={article.onNext}
                   >
                     {loading ? "看山正在翻阅原帖…" : "开聊 · 听呼噜猫说"}
                     <ArrowRight size={17} />
                   </button>
                 )}
-                {!readerLed && started && !finished && (
+                {article && !readerLed && started && !finished && (
                   <button
                     className="room-continue"
                     disabled={!!draft.trim()}
                     onClick={() => {
                       setShowLog(false);
-                      onNext();
+                      article.onNext();
                       flow.current?.scrollTo({ top: 0 });
                     }}
                   >
@@ -322,10 +327,12 @@ export function CabinModal({
                 >
                   <input
                     value={draft}
+                    autoComplete="off"
+                    spellCheck={false}
                     maxLength={400}
                     onCompositionStart={() => {
                       composing.current = true;
-                      onDraftStart();
+                      onDraftStart?.();
                     }}
                     onCompositionEnd={() => {
                       composing.current = false;
@@ -340,7 +347,7 @@ export function CabinModal({
                         e.preventDefault();
                     }}
                     onChange={(e) => {
-                      onDraftStart();
+                      onDraftStart?.();
                       setDraft(e.target.value);
                     }}
                     aria-label="我也说一句"

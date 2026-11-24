@@ -393,6 +393,11 @@ export default function Home() {
         <main className="reading-main">
           <div className="shelf-breadcrumb">
             <Library size={14} /> 伴读书架 <i>/</i> {question ? "正在阅读" : "今日书页"}
+            {!question && (
+              <a className="prototype-link trial-invite" href="/trial">
+                <Feather size={14} /> 窗边试聊 →
+              </a>
+            )}
           </div>
           {!question && (
             <section className="shelf-hero">
@@ -541,8 +546,6 @@ export default function Home() {
           <CabinModal
             key={key ?? "empty"}
             room={room}
-            loading={loading}
-            error={error}
             draft={draft}
             setDraft={(v) => {
               if (key) setDrafts((d) => ({ ...d, [key]: v }));
@@ -554,24 +557,28 @@ export default function Home() {
               cancelRoomRequests();
             }}
             onDraftStart={giveFloorToReader}
-            onPersonal={() => openRoom([], PERSONAL_ROOM)}
-            onRetry={() => {
-              if (room?.context.length) void analyze(room);
-            }}
-            onNext={() => {
-              if (!room) return;
-              if (!room.result) void analyze(room, true);
-              else updateBook((b) => nextLine(b, room.key, Date.now()));
-            }}
             onSay={(s) => {
               giveFloorToReader();
               setError(null);
               if (key) updateBook((b) => say(b, key, s, Date.now()));
             }}
-            onChoose={choose}
-            choosing={choosing}
-            onCommit={commit}
-            onLocate={setViewing}
+            article={{
+              loading,
+              error,
+              choosing,
+              onPersonal: () => openRoom([], PERSONAL_ROOM),
+              onRetry: () => {
+                if (room?.context.length) void analyze(room);
+              },
+              onNext: () => {
+                if (!room) return;
+                if (!room.result) void analyze(room, true);
+                else updateBook((b) => nextLine(b, room.key, Date.now()));
+              },
+              onChoose: choose,
+              onCommit: commit,
+              onLocate: setViewing,
+            }}
           />
         )}
         {overlay === "shelf" && (

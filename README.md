@@ -14,6 +14,12 @@
 
 **设计验收看一句话：读者改口，下一句就要变。** 文中标注了六个对话场景、四位伙伴的分工、记忆边界和首轮试用标准。这是产品目标，不是功能上线清单；当前能体验的部分见下文。
 
+### 现在可试：两桌不留记录的「窗边试聊」
+
+[下载发给读者的离线包（ZIP）](https://github.com/Wattson-Law/fluffy-roundtable/raw/refs/heads/main/docs/reader-trial/window-seat.zip) · [主持人说明与反馈卡汇总](docs/reader-trial/README.md)
+
+解压后用浏览器打开 `window-seat.html`，或者在运行中的新版应用打开 `/trial`。同一套伙伴、立绘和接话逻辑，**不看个人书架，不收聊天原话**。每位读者用自己的话坐两桌：一次中途改口，一次带着现实难处求支持。最后可以只带走六个勾选，也可以什么都不留。五人试用尚待进行；邀请读者时只发试用包，不发下面的开发示例。
+
 ### 第一次落地：读者一改口，伙伴就换一种接法
 
 [技术路线与后续取舍](docs/superpowers/plans/2026-11-24-intent-first-iteration.md) · [本轮验收与五人试用提纲](docs/intent-first/README.md)
