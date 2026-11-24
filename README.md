@@ -8,6 +8,8 @@
 
 ---
 
+**下一版设计稿（待实现）**：[先听懂，再接话](docs/superpowers/specs/2026-11-24-intent-first-cabin-design.md) — 读者从「帮我分析」改口说「我只是有点怕」时，小动物下一句该怎样接。
+
 ## 正式应用：看山伴读与猫猫便签
 
 启动 `npm run dev` 后打开 `http://localhost:3100`。想不依赖外部服务走一遍，可直接打开 `http://localhost:3100/?sample=weekend-notebook`。这个入口使用**同一个正式界面**，文章和引文都标为「本地试读」，不会混入知乎分析。
