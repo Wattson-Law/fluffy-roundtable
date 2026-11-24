@@ -8,7 +8,11 @@
 
 ---
 
-**下一版设计稿（待实现）**：[先听懂，再接话](docs/superpowers/specs/2026-11-24-intent-first-cabin-design.md) — 读者从「帮我分析」改口说「我只是有点怕」时，小动物下一句该怎样接。
+## 产品总设计稿 v1.0｜先听懂，再接话
+
+[阅读总设计稿](docs/superpowers/specs/2026-11-24-intent-first-cabin-design.md) · [固定版本 `design-v1.0`](https://github.com/Wattson-Law/fluffy-roundtable/tree/design-v1.0)
+
+**设计验收看一句话：读者改口，下一句就要变。** 文中标注了六个对话场景、四位伙伴的分工、记忆边界和首轮试用标准。这是产品目标，不是功能上线清单；当前能体验的部分见下文。
 
 ## 正式应用：看山伴读与猫猫便签
 
