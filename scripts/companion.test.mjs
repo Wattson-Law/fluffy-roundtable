@@ -8,6 +8,7 @@ import {
   say,
   catCheckIn,
   dismissNote,
+  takeNote,
   IDLE_MS,
   DAY,
   shapeRoles,
@@ -48,7 +49,10 @@ const result = {
   dialogues: script,
   curatedSources: [],
   meta: { trailCount: 1 },
-  controlCard: { oneLineTakeaway: "先分清两种说法。", microAction: "抄下一句原文。" },
+  controlCard: {
+    oneLineTakeaway: "先分清两种说法。",
+    microAction: "抄下一句原文。",
+  },
 };
 const fresh = () => withResult(startThread(emptyBook(), key, [item(1)], at), key, result);
 const active = () =>
@@ -57,7 +61,10 @@ const ready = { visible: true, busy: false, activeKey: null };
 test("reading migrates legacy entries; keeps history beyond five, deduplicates revisits and survives blocked storage", () => {
   const map = new Map([["fr.readingTrail", JSON.stringify([item(0)])]]);
   globalThis.window = {
-    localStorage: { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => map.set(k, v) },
+    localStorage: {
+      getItem: (k) => map.get(k) ?? null,
+      setItem: (k, v) => map.set(k, v),
+    },
   };
   assert.equal(getHistory()[0].url, item(0).url);
   for (let i = 1; i <= 7; i++) pushTrail(item(i), "阅读书架");
@@ -81,7 +88,10 @@ test("reading migrates legacy entries; keeps history beyond five, deduplicates r
   };
   pushTrail(item(9));
   assert.equal(getTrail()[0].id, "9");
-  window.localStorage = { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => map.set(k, v) };
+  window.localStorage = {
+    getItem: (k) => map.get(k) ?? null,
+    setItem: (k, v) => map.set(k, v),
+  };
   clearTrail();
   delete globalThis.window;
 });
@@ -98,8 +108,10 @@ test("only a real typed exchange can prompt a single, contextual cat note after 
   const b = active();
   assert.equal(catCheckIn(b, at + IDLE_MS - 1, ready), b);
   const sent = catCheckIn(b, at + IDLE_MS + 5, ready);
-  assert.equal(sent.threads[0].turns.at(-1).speaker, "purr_cat");
-  assert.match(sent.threads[0].turns.at(-1).text, /选择|两条路/);
+  const inside = takeNote(sent, key, at + IDLE_MS + 6).threads[0].turns.at(-1);
+  assert.equal(inside.speaker, "purr_cat");
+  assert.equal(inside.kind, "note");
+  assert.match(inside.text, /选择|两条路/);
   assert.ok(sent.pending);
   const read = dismissNote(JSON.parse(JSON.stringify(sent)));
   assert.equal(catCheckIn(read, at + 2 * DAY, ready), read);
@@ -124,7 +136,7 @@ test("no intrusion for hidden tabs, typing, another room, opt-out, private subje
 test("remember earlier human context, never parrot private details or make up citations", () => {
   let b = say(active(), key, "嗯嗯", at + 9);
   b = catCheckIn(b, at + IDLE_MS + 15, ready);
-  assert.match(b.threads[0].turns.at(-1).text, /选择|两条路/);
+  assert.match(takeNote(b, key, at + IDLE_MS + 16).threads[0].turns.at(-1).text, /选择|两条路/);
   assert.equal(
     say(active(), key, "我想看看原文证据", at + 5).threads[0].turns.at(-1).quoteRef.sourceUrl,
     key,
@@ -145,12 +157,19 @@ test("model outputs cannot skip the cat opening, evidence, dog or host", () => {
 test("reading cap is 100; editorial trials and real discussion contexts are never mixed", () => {
   const map = new Map();
   globalThis.window = {
-    localStorage: { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => map.set(k, v) },
+    localStorage: {
+      getItem: (k) => map.get(k) ?? null,
+      setItem: (k, v) => map.set(k, v),
+    },
   };
   for (let i = 0; i < 103; i++) pushTrail(item(i));
   assert.equal(getHistory().length, 100);
   assert.equal(getHistory()[0].id, "3");
-  const sample = { ...item("trial"), origin: "sample", url: "/?sample=two-bookmarks" };
+  const sample = {
+    ...item("trial"),
+    origin: "sample",
+    url: "/?sample=two-bookmarks",
+  };
   pushTrail(sample);
   assert.equal(getTrail().length, 1);
   assert.ok(JSON.parse(map.get("fr.readingTrail")).every((t) => !t.origin));
@@ -166,7 +185,8 @@ test("mute/unmute needs fresh conversation; stop cues cannot trigger unsolicited
     on = setNotes(off, true);
   assert.equal(catCheckIn(on, at + 2 * IDLE_MS, ready), on);
   const n = say(on, key, "想接着聊摄影", at + 2 * IDLE_MS + 10);
-  assert.match(catCheckIn(n, at + 3 * IDLE_MS + 20, ready).threads[0].turns.at(-1).text, /拍照/);
+  const offered = catCheckIn(n, at + 3 * IDLE_MS + 20, ready);
+  assert.match(takeNote(offered, key, at + 3 * IDLE_MS + 21).threads[0].turns.at(-1).text, /拍照/);
   const no = say(b, key, "不要主动给我发消息", at + 2);
   assert.equal(no.enabled, false);
   assert.equal(catCheckIn(no, at + DAY, ready), no);
@@ -204,7 +224,10 @@ test("bookmarks keep the exact occurrence, even beyond the history excerpt; neve
     assert.ok([...c.text].length <= 160 && !/[\uD800-\uDBFF]$/.test(c.text));
   }
   assert.equal(choices[1].text, "乙写字！");
-  const ctx = { ...source, contentText: mark.before + mark.excerpt + mark.after };
+  const ctx = {
+    ...source,
+    contentText: mark.before + mark.excerpt + mark.after,
+  };
   const req = requestFocus(mark);
   assert.ok(verifyFocus([ctx], req));
   assert.equal(verifyFocus([ctx], { ...req, start: 0 }), null);
@@ -222,8 +245,9 @@ test("a cat note belongs to one unfinished bookmark, without displaying the pass
   b = say(withResult(b, k, result), k, "两种方法我拿不定", at + 1);
   let sent = catCheckIn(b, at + IDLE_MS + 5, ready);
   assert.equal(sent.pending.key, k);
-  assert.match(sent.threads[0].turns.at(-1).text, /书签|夹的那句/);
-  assert.doesNotMatch(sent.threads[0].turns.at(-1).text, /原文中写了|我拿不定/);
+  const inside = takeNote(sent, k, at + IDLE_MS + 6).threads[0].turns.at(-1);
+  assert.match(inside.text, /书签|夹的那句/);
+  assert.doesNotMatch(inside.text, /原文中写了|我拿不定/);
   const done = { ...b, threads: [{ ...b.threads[0], committed: true }] };
   assert.equal(catCheckIn(done, at + IDLE_MS + 5, ready), done);
   const privateRoom = {
@@ -243,7 +267,10 @@ test("two clips and a whole-article room survive reload without sharing progress
   const { getBook, updateBook, clearCompanion } = await import("../src/lib/storage.ts");
   const local = new Map();
   globalThis.window = {
-    localStorage: { getItem: (k) => local.get(k) ?? null, setItem: (k, v) => local.set(k, v) },
+    localStorage: {
+      getItem: (k) => local.get(k) ?? null,
+      setItem: (k, v) => local.set(k, v),
+    },
   };
   try {
     const row = item(12),

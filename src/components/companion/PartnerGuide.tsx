@@ -33,7 +33,7 @@ const profiles: Record<Speaker, { description: string; poses: [string, string][]
   },
   shiba: {
     description:
-      "我去评论区找不同的声音，再看看有没有其他亲历回答。别人的经历只是对照，我不拿一条评论替你下结论。",
+      "想试一试时，我可以陪你迈第一步。只想听一句加油，我就陪在这儿。聊文章也能一起看评论，但别人的经历不能替你做决定。",
     poses: [
       ["大笑", art.actions.shiba],
       ["追逐皮球", ball.src],

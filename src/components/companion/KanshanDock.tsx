@@ -4,20 +4,17 @@ import { useReducedMotion } from "framer-motion";
 import { ArrowUpRight, X } from "lucide-react";
 import { art } from "@/lib/art";
 import walkingCat from "../../../assets/action-poses/v1/poses/ginger-cat-walking.png";
-import type { Turn } from "@/lib/companion";
 
 export function KanshanDock({
   count,
   onOpen,
-  note,
-  bookmarked,
+  invited,
   onNote,
   onDismiss,
 }: {
   count: number;
   onOpen: () => void;
-  note?: Turn;
-  bookmarked?: boolean;
+  invited: boolean;
   onNote: () => void;
   onDismiss: () => void;
 }) {
@@ -47,7 +44,7 @@ export function KanshanDock({
   }, [reduced]);
   return (
     <aside className="window-dock" aria-label="窗边伙伴">
-      {note && (
+      {invited && (
         <section className="cat-note" aria-label="呼噜猫的便签" aria-live="polite">
           <div className="note-label">
             <img src={walkingCat.src} alt="呼噜猫踱过来送便签" />
@@ -56,10 +53,10 @@ export function KanshanDock({
               <X size={15} />
             </button>
           </div>
-          <p>{note.text}</p>
+          <p>有空聊两句吗？</p>
           <div>
             <button onClick={onNote}>
-              {bookmarked ? "继续聊这张书签" : "回猫猫一句"} <ArrowUpRight size={13} />
+              回猫猫一句 <ArrowUpRight size={13} />
             </button>
             <button onClick={onDismiss}>先不聊</button>
           </div>

@@ -42,7 +42,13 @@ def save_card(p):
         if not step.count():
             break
         step.click()
-    button(p, "接过看山的掌控卡").click()
+    if button(p, "接过看山的掌控卡").count():
+        button(p, "接过看山的掌控卡").click()
+    else:
+        details = p.locator(".context-details")
+        if details.get_attribute("open") is None:
+            details.locator("summary").click()
+        button(details, "查看这篇的掌控卡 →").click()
     button(p, "我拍板，收进手账").click()
 
 
@@ -113,13 +119,16 @@ def trial(browser, base, mobile=False, shots=None):
         say(p, "两种方法里我还没选好")
         button(p, "关闭小屋").click()
         p.clock.fast_forward(310_000)
-        expect(p.locator(".cat-note")).to_contain_text("那张书签")
+        expect(p.locator(".cat-note p")).to_have_text("有空聊两句吗？")
         expect(p.locator(".cat-note")).not_to_contain_text(quote)
-        button(p, "继续聊这张书签").click()
+        button(p, "回猫猫一句").click()
+        expect(room.locator(".speech-paper")).to_contain_text("书签")
+        room.locator(".context-details summary").click()
         expect(room.locator(".bookmark-ticket q")).to_have_text(quote)
         button(p, "关闭小屋").click()
         p.get_by_role("button", name=re.compile("^阅读记录")).click()
         p.get_by_role("button", name="继续这张书签：" + quote).click()
+        room.locator(".context-details summary").click()
         expect(room.locator(".bookmark-ticket q")).to_have_text(quote)
     save_card(p)
     button(p, "关闭小屋").click()
@@ -208,7 +217,7 @@ def public_answers(browser, base, query):
         else:
             assert not dog.get("quoteRef") and "没有" in dog["text"]
             expect(room.locator(".speech-paper")).to_contain_text(
-                "没有返回可核对的精选评论"
+                "没有这篇可核对的读者评论"
             )
         save_card(p)
         button(room, "关闭小屋").click()

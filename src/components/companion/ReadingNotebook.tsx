@@ -137,7 +137,7 @@ export function ReadingNotebook({
             <span>
               {temporary
                 ? "浏览器未能保存，仅本页有效。"
-                : "聊天和便签存在本机。开真实圆桌时才提交本轮已读摘录。"}
+                : "私聊和便签留在本机；主动选真实文章导读、按篇或按句开桌，才提交摘录。"}
             </span>
             {!sure ? (
               <button onClick={() => setSure(true)}>清空记录</button>

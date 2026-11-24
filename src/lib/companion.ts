@@ -6,6 +6,11 @@ import type {
   Speaker,
 } from "@/types";
 
+import { readTurn, type TurnContext } from "./turn-intent.ts";
+import { replyToTurn } from "./turn-reply.ts";
+export { selectComment } from "./reading-evidence.ts";
+
+export const PERSONAL_ROOM = "cabin:window";
 export const IDLE_MS = 5 * 60_000;
 export const DAY = 24 * 60 * 60_000;
 export const MAX_THREADS = 16;
@@ -18,8 +23,8 @@ export const names: Record<Speaker, string> = {
 };
 export const duties: Record<Speaker, string> = {
   purr_cat: "听你说说",
-  owl: "翻回原文",
-  shiba: "找另一种声音",
+  owl: "一起弄清楚",
+  shiba: "站在你这边",
   kanshan: "记下与收口",
 };
 export type Turn = {
@@ -31,6 +36,7 @@ export type Turn = {
   quoteRef?: DialogueLine["quoteRef"];
 };
 export type Room = {
+  conversation?: TurnContext;
   bookmark?: PassageBookmark;
   key: string;
   title: string;
@@ -47,7 +53,7 @@ export type Book = {
   version: 1;
   enabled: boolean;
   lastNudgeAt: number;
-  pending: { key: string; id: string } | null;
+  pending: { key: string; id: string; text?: string } | null;
   threads: Room[];
 };
 export const emptyBook = (): Book => ({
@@ -70,8 +76,8 @@ export function startThread(
   now: number,
   bookmark?: PassageBookmark,
 ): Book {
-  if (!context.length || b.threads.some((t) => t.key === key)) return b;
-  const item = context.at(-1)!;
+  if ((!context.length && key !== PERSONAL_ROOM) || b.threads.some((t) => t.key === key)) return b;
+  const item = context.at(-1);
   const others = b.threads
     .slice()
     .sort(
@@ -85,7 +91,7 @@ export function startThread(
       {
         key,
         ...(bookmark ? { bookmark } : {}),
-        title: bookmark?.title || item.fromQuestion || item.title,
+        title: bookmark?.title || item?.fromQuestion || item?.title || "窗边随聊",
         context: context.slice(-5),
         cursor: 0,
         turns: [],
@@ -116,6 +122,7 @@ function append(
 }
 export function nextLine(b: Book, key: string, now: number): Book {
   return changeRoom(b, key, (t) => {
+    if (t.conversation) return t; // An interruption retires this guide, even after reload.
     const line = t.result?.dialogues[t.cursor];
     return line
       ? {
@@ -150,121 +157,45 @@ const themes = [
   {
     re: /选[择项]|两条路|取舍|纠结|拿不定|比较|犹豫|还是先/,
     note: "上回聊到怎么做选择，我还记得。还没想定的部分，我也愿意听。",
-    reply: "两边都有让你放不下的地方，是吗？我在听，不急着替你选。",
   },
   {
     re: /原文|证据|出处|引用|来源|依据|数字/,
     note: "上回你想把原文看明白一点。要是那句话还挂在心里，我在窗边听。",
-    reply: "你在意的是那句话究竟怎么说的，我听到了。",
   },
   {
     re: /累|歇|没力气|疲惫|压力|喘口气/,
     note: "上回你说有些累。我把窗边的垫子留着，今天不说话也好。",
-    reply: "听起来已经花了你好多力气。这里不用再解释得很清楚。",
   },
   {
     re: /只想说说|只想聊聊|听我说|别给建议|不想要建议/,
     note: "你上回说，只是想有人听听。我不出主意，还是给你留着那把椅子。",
-    reply: "好，我只听，不替你出主意。",
   },
   {
     re: /摄影|拍照|照片|拍鸟/,
     note: "上回聊到了拍照。要是又看到什么想留住的画面，我愿意听你讲。",
-    reply: "原来那个画面让你这么在意。我听着呢。",
   },
   {
     re: /计划|笔记|项目|学[习不]|课程|进度/,
     note: "上回说起想做的那件事，我还记得。无论有没有新进展，窗边都给你留了位置。",
-    reply: "那件事你一直放在心上呢，讲到哪儿我就听到哪儿。",
   },
 ];
 const ordinaryNote = "上次聊到一半的小屋还开着。想接着说，我在听；想继续看书也好。";
-/** Prefer an actual contrasting remark; don't label an ordinary comment as a rebuttal. */
-export function selectComment(rows: { comments: string[] }[]) {
-  const all = rows.flatMap((t, index) =>
-    t.comments
-      .filter((c) => !!c.trim())
-      .map((c) => ({
-        index,
-        excerpt: c.trim().slice(0, 150),
-        contrast: /不过|但[是我]|相反|不一定|未必|并非|不认同|不太同意|也有|不一样/.test(c),
-      })),
-  );
-  return all.find((c) => c.contrast) ?? all.find((c) => c.excerpt.length >= 6) ?? all[0];
-}
-function companionReply(t: Room, text: string): Pick<Turn, "speaker" | "text" | "quoteRef"> {
-  const r = t.result;
-  if (optOut.test(text))
-    return { speaker: "purr_cat", text: "好，我不再主动留便签了。你来敲窗时，我还在。" };
-  if (wantsSpace.test(text))
-    return { speaker: "purr_cat", text: "好，那我安静趴在窗边。今天这句不用回。" };
-  if (/原文|证据|出处|引用|来源|核查|对照/.test(text)) {
-    const quote = r?.dialogues.find((l) => l.speaker === "owl" && l.quoteRef)?.quoteRef;
-    return {
-      speaker: "owl",
-      text: quote
-        ? "我把能核对的那一句夹在下面。它是原文的说法，不等于对所有人都成立。"
-        : "手边还没有可以逐字核对的引文，我不拿猜测当证据。",
-      quoteRef: quote,
-    };
-  }
-  if (/评论|反方|经验|避坑|柴犬|同路人|其他人/.test(text)) {
-    const pinnedDog = t.bookmark && r?.dialogues.find((l) => l.speaker === "shiba");
-    if (pinnedDog) return { speaker: "shiba", text: pinnedDog.text, quoteRef: pinnedDog.quoteRef };
-    if (t.context.at(-1)?.origin === "sample")
-      return {
-        speaker: "shiba",
-        text: "试读没有评论区。我留下了同册另一篇作对照，不把它说成读者的经历。",
-      };
-    const comment = selectComment(t.context);
-    if (comment) {
-      const a = t.context[comment.index];
-      return {
-        speaker: "shiba",
-        text: comment.contrast
-          ? "这位读者提了不同的看法。我把评论原话单独夹出来，不拿一个人的经历代表所有人。"
-          : "这是评论区另一位读者的声音，不是作者的结论。",
-        quoteRef: {
-          sourceTag: `READ_${comment.index}`,
-          sourceUrl: a.url,
-          sourceTitle: a.title,
-          excerpt: comment.excerpt,
-          reason: "精选评论 · 来自原帖评论区",
-        },
-      };
-    }
-    return {
-      speaker: "shiba",
-      text: r?.curatedSources.length
-        ? "我找到了可以对照的亲历回答，下面的原帖都能点开，也可以不同意它们。"
-        : "这轮没有找到能对照的评论或新回答。我不替别人编经历。",
-    };
-  }
-  if (/收[个一下]*尾|总结|掌控卡|下一步|小行动|怎么做/.test(text))
-    return {
-      speaker: "kanshan",
-      text: r
-        ? `${r.controlCard.oneLineTakeaway} ${t.followUp?.microAction || r.controlCard.microAction}`
-        : "我先收好你刚才说的，等读过的原文到齐再递卡。",
-    };
-  return {
-    speaker: "purr_cat",
-    text:
-      themes.find((x) => x.re.test(text))?.reply ||
-      (/谢谢|嗯嗯|好的/.test(text)
-        ? "嗯，听到了。我就在这里。"
-        : "我听着呢。还有哪一小段是你想多说两句的？不说完也没关系。"),
-  };
-}
 export function say(b: Book, key: string, raw: string, now: number): Book {
   const text = raw.trim().slice(0, 400);
   if (!text || !b.threads.some((t) => t.key === key)) return b;
   let next = b.pending?.key === key ? dismissNote(b) : b;
   if (optOut.test(text)) next = setNotes(next, false);
   return changeRoom(next, key, (t) => {
-    const reply = companionReply(t, text);
+    const turn = readTurn(text, t.conversation);
+    const reply = optOut.test(text)
+      ? {
+          speaker: "purr_cat" as const,
+          text: "好，我不再主动留便签了。你来敲窗时，我还在。",
+          quoteRef: undefined,
+        }
+      : replyToTurn(t, text, turn);
     return append(
-      append(t, "user", "typed", text, now),
+      append({ ...t, conversation: turn.next }, "user", "typed", text, now),
       reply.speaker,
       "reply",
       reply.text,
@@ -279,7 +210,10 @@ export function acceptChoice(
   label: string,
   reply: { text: string; microAction: string },
   now: number,
+  expectedLastTurn: string | undefined,
 ): Book {
+  const current = b.threads.find((t) => t.key === key);
+  if (!current || current.committed || current.turns.at(-1)?.id !== expectedLastTurn) return b;
   return changeRoom(b.pending?.key === key ? dismissNote(b) : b, key, (t) => ({
     ...append(append(t, "user", "choice", label, now), "kanshan", "reply", reply.text, now),
     followUp: reply,
@@ -309,6 +243,7 @@ export function catCheckIn(
   if (
     !user ||
     t.committed ||
+    t.conversation?.need === "quiet" ||
     (t.bookmark && privateSubject.test(`${t.bookmark.title} ${t.bookmark.excerpt}`)) ||
     user.kind !== "typed" ||
     (env.activeKey !== null && env.activeKey !== t.key) ||
@@ -334,12 +269,21 @@ export function catCheckIn(
         : "上次那张书签还夹着。那两种做法，你还想接着聊吗？"
       : `上次那张书签还夹着。${theme?.note ?? "想翻回那一句时，我陪你。"}`
     : (theme?.note ?? ordinaryNote);
-  const updated = append(t, "purr_cat", "note", note, now);
-  return {
-    ...changeRoom(b, t.key, () => ({ ...updated, nudgedFor: user.id })),
+  const offered = {
+    ...changeRoom(b, t.key, (room) => ({ ...room, nudgedFor: user.id })),
     lastNudgeAt: now,
-    pending: { key: t.key, id: updated.turns.at(-1)!.id },
+    pending: { key: t.key, id: user.id, text: note },
   };
+  return env.activeKey === t.key ? takeNote(offered, t.key, now) : offered;
+}
+/** Outside the cabin only an invitation exists. Older saves may already contain the actual note. */
+export function takeNote(b: Book, key: string, now: number): Book {
+  const invite = b.pending;
+  if (!invite || invite.key !== key) return b;
+  const next = dismissNote(b);
+  return invite.text
+    ? changeRoom(next, key, (t) => append(t, "purr_cat", "note", invite.text!, now))
+    : next;
 }
 /** Keep the four project duties intact even when the model omits a speaker or drops a quote. */
 export function shapeRoles(candidate: DialogueLine[], fallback: DialogueLine[]): DialogueLine[] {

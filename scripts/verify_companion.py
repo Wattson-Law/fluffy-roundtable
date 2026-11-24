@@ -122,23 +122,21 @@ def desktop(browser, base, shots):
     entry.fill("")
     btn(p, "关闭小屋").click()
     p.clock.fast_forward(20000)
-    expect(p.locator(".cat-note")).to_contain_text("选择")
-    assert len(notes(p)) == 1
+    expect(p.locator(".cat-note p")).to_have_text("有空聊两句吗？")
+    assert len(notes(p)) == 0
     shot(p, shots, "04-猫猫主动便签")
     p.reload(wait_until="networkidle")
     expect(p.locator(".cat-note")).to_be_visible()
     btn(p, "回猫猫一句").click()
     expect(p.locator(".speech-paper strong")).to_have_text("呼噜猫")
+    p.get_by_role("button", name=re.compile("展开全部")).click()
     expect(p.get_by_role("log")).to_contain_text("主动便签")
     assert len(notes(p)) == 1
-    p.get_by_role("button", name=re.compile("听下一句")).click()
-    expect(p.locator(".speech-paper strong")).to_have_text("护短柴犬")
-    expect(p.locator(".source-list").first.get_by_role("link")).to_have_attribute(
-        "href", "/?sample=two-bookmarks"
-    )
-    p.get_by_role("button", name=re.compile("听下一句")).click()
-    expect(p.locator(".speech-paper strong")).to_have_text("刘看山")
-    btn(p, "接过看山的掌控卡").click()
+    expect(p.get_by_role("log")).to_contain_text("选择")
+    expect(p.get_by_role("button", name=re.compile("听下一句"))).to_have_count(0)
+    # Intentionally retrieve the article card, not the retired analysis dialogue.
+    p.locator(".context-details summary").click()
+    btn(p, "查看这篇的掌控卡 →").click()
     btn(p, "我拍板，收进手账").click()
     expect(btn(p, "已收进猫咖手账")).to_be_disabled()
     p.keyboard.press("Escape")
@@ -155,7 +153,7 @@ def desktop(browser, base, shots):
     p.get_by_role("button", name=re.compile("过去的聊天")).click()
     btn(p, "继续这段聊天 →").click()
     expect(p.get_by_role("log")).to_be_visible()
-    assert memory(p)["threads"][0]["cursor"] == 4
+    assert memory(p)["threads"][0]["cursor"] == 2
     p.keyboard.press("Escape")
     open_notes(p)
     btn(p, "清空记录").click()
@@ -199,6 +197,11 @@ def mobile(browser, base, shots):
         field = p.get_by_role("textbox", name="我也说一句")
         assert field.bounding_box()["y"] + field.bounding_box()["height"] < h
         shot(p, shots, f"05-手机小屋-{w}")
+        p.get_by_role("button", name=re.compile("听下一句")).click()
+        expect(p.locator(".speech-paper strong")).to_have_text("护短柴犬")
+        expect(p.locator(".source-list").get_by_role("link")).to_have_attribute("href", "/?sample=weekend-notebook")
+        p.get_by_role("button", name=re.compile("听下一句")).click()
+        expect(p.locator(".speech-paper strong")).to_have_text("刘看山")
         p.keyboard.press("Escape")
         expect(p.get_by_role("dialog")).to_have_count(0)
         assert not errors and not posts, (errors, posts)
@@ -309,9 +312,9 @@ def live_shape(browser, base):
     btn(p, "发送消息").click()
     expect(p.locator(".speech-paper strong")).to_have_text("考据猫头鹰")
     p.locator(".evidence-card").first.wait_for()
-    for _ in range(3):
-        p.get_by_role("button", name=re.compile("听下一句")).click()
-    btn(p, "接过看山的掌控卡").click()
+    expect(p.get_by_role("button", name=re.compile("听下一句"))).to_have_count(0)
+    p.locator(".context-details summary").click()
+    btn(p, "查看这篇的掌控卡 →").click()
     btn(p, "先看原文").click()
     expect(p.locator(".micro")).to_contain_text("先看原文")
     btn(p, "我拍板，收进手账").click()

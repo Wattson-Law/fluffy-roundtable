@@ -1,7 +1,7 @@
 "use client";
 import type { JournalEntry, ReadingTrailItem, ZhihuItem } from "@/types";
 import { isBookmark } from "./bookmarks.ts";
-import type { Book, Room } from "./companion";
+import { PERSONAL_ROOM, type Book, type Room } from "./companion.ts";
 
 const LEGACY = "fr.readingTrail",
   HISTORY = "fr.readingHistory.v1",
@@ -104,16 +104,18 @@ const defaultBook = (): Book => ({
 export function getBook(): Book {
   const b = read<Book | null>(BOOK, null);
   if (b?.version !== 1 || !Array.isArray(b.threads)) return defaultBook();
-  const threads = b.threads.filter(
-    (t): t is Room =>
-      !!t &&
-      typeof t.key === "string" &&
-      Array.isArray(t.context) &&
-      t.context.length > 0 &&
-      t.context.every(validTrail) &&
-      Array.isArray(t.turns) &&
-      Number.isInteger(t.cursor),
-  ).map(t => t.bookmark && !isBookmark(t.bookmark) ? { ...t, bookmark: undefined } : t);
+  const threads = b.threads
+    .filter(
+      (t): t is Room =>
+        !!t &&
+        typeof t.key === "string" &&
+        Array.isArray(t.context) &&
+        (t.context.length > 0 || t.key === PERSONAL_ROOM) &&
+        t.context.every(validTrail) &&
+        Array.isArray(t.turns) &&
+        Number.isInteger(t.cursor),
+    )
+    .map((t) => (t.bookmark && !isBookmark(t.bookmark) ? { ...t, bookmark: undefined } : t));
   return {
     ...defaultBook(),
     ...b,
@@ -134,14 +136,46 @@ export function updateBook(edit: (b: Book) => Book): Book {
   }
   return next;
 }
+// A tab-local return address, not a second copy of the conversation or its article.
+const SEAT = "fr.windowSeat.v1";
+let inPageSeat: string | null = null;
+export function rememberSeat(room?: Room) {
+  const id = room?.turns.at(-1)?.id;
+  inPageSeat = id ? JSON.stringify({ id, readAt: getHistory().at(-1)?.readAt ?? 0 }) : null;
+  try {
+    if (inPageSeat) window.sessionStorage.setItem(SEAT, inPageSeat);
+    else window.sessionStorage.removeItem(SEAT);
+  } catch {
+    /* Blocked session storage: still works until this document is closed. */
+  }
+}
+export function seatedRoom(): string | undefined {
+  let saved = inPageSeat;
+  try {
+    saved ??= window.sessionStorage.getItem(SEAT);
+  } catch {
+    /* memory only */
+  }
+  if (!saved) return;
+  try {
+    const seat = JSON.parse(saved);
+    if (typeof seat?.id !== "string" || seat.readAt !== (getHistory().at(-1)?.readAt ?? 0)) return;
+    return getBook().threads.find((t) => t.turns.some((m) => m.id === seat.id))?.key;
+  } catch {
+    return;
+  }
+}
 export function clearCompanion() {
+  rememberSeat();
   const b = getBook();
   write(BOOK, { ...defaultBook(), enabled: b.enabled });
   clearTrail();
 }
 export function getJournal(): JournalEntry[] {
   const v = read<JournalEntry[]>(JOURNAL, []);
-  return Array.isArray(v) ? v.map(e => e.bookmark && !isBookmark(e.bookmark) ? { ...e, bookmark: undefined } : e) : [];
+  return Array.isArray(v)
+    ? v.map((e) => (e.bookmark && !isBookmark(e.bookmark) ? { ...e, bookmark: undefined } : e))
+    : [];
 }
 export function addJournal(
   entry: Omit<JournalEntry, "id" | "createdAt">,

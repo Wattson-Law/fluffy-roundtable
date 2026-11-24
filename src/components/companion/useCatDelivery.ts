@@ -15,12 +15,21 @@ export function useCatDelivery(flags: { activeKey: string | null; busy: boolean 
     const activity = () => {
       quietUntil = Date.now() + 15_000;
     };
+    let composing: EventTarget | null = null;
+    const compositionStart = (event: Event) => {
+      composing = event.target;
+      activity();
+    };
+    const compositionEnd = () => {
+      composing = null;
+      activity();
+    };
     const deliver = () => {
       if (!alive || document.visibilityState !== "visible" || Date.now() < quietUntil) return;
       const editor = document.activeElement;
       const typing =
         (editor instanceof HTMLInputElement || editor instanceof HTMLTextAreaElement) &&
-        !!editor.value.trim();
+        (!!editor.value.trim() || composing === editor);
       const env = {
         visible: true,
         busy: latest.current.busy || typing || window.getSelection()?.isCollapsed === false,
@@ -40,6 +49,8 @@ export function useCatDelivery(flags: { activeKey: string | null; busy: boolean 
       else deliver();
     };
     const handle = window.setInterval(tick, 5000);
+    document.addEventListener("compositionstart", compositionStart, true);
+    document.addEventListener("compositionend", compositionEnd, true);
     document.addEventListener("visibilitychange", activity);
     document.addEventListener("keydown", activity, true);
     document.addEventListener("scroll", activity, true);
@@ -47,6 +58,8 @@ export function useCatDelivery(flags: { activeKey: string | null; busy: boolean 
     return () => {
       alive = false;
       clearInterval(handle);
+      document.removeEventListener("compositionstart", compositionStart, true);
+      document.removeEventListener("compositionend", compositionEnd, true);
       document.removeEventListener("visibilitychange", activity);
       document.removeEventListener("keydown", activity, true);
       document.removeEventListener("scroll", activity, true);

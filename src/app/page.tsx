@@ -20,6 +20,8 @@ import {
   getTrail,
   memoryOnly,
   pushTrail,
+  rememberSeat,
+  seatedRoom,
   STORAGE_KEYS,
   STORE_EVENT,
   updateBook,
@@ -28,6 +30,8 @@ import {
   acceptChoice,
   changeRoom,
   dismissNote,
+  takeNote,
+  PERSONAL_ROOM,
   duties,
   emptyBook,
   names,
@@ -79,11 +83,13 @@ export default function Home() {
     [key, setKey] = useState<string | null>(null),
     [loading, setLoading] = useState(false),
     [choosing, setChoosing] = useState(false),
+    [folding, setFolding] = useState(false),
     [error, setError] = useState<string | null>(null),
     [drafts, setDrafts] = useState<Record<string, string>>({});
   const answerReq = useRef<AbortController | null>(null),
     reportReq = useRef<AbortController | null>(null),
-    choiceReq = useRef<AbortController | null>(null);
+    choiceReq = useRef<AbortController | null>(null),
+    guideOpening = useRef<AbortController | null>(null);
   const room = book.threads.find((t) => t.key === key);
   const draft = key ? (drafts[key] ?? "") : "";
   useEffect(() => {
@@ -140,7 +146,7 @@ export default function Home() {
       overlay === "friends" ||
       overlay === "shelf" ||
       overlay === "journal" ||
-      (overlay === "cabin" && (!room?.cursor || loading || choosing)) ||
+      (overlay === "cabin" && (!room?.turns.length || loading || choosing || folding)) ||
       Object.values(drafts).some((v) => !!v.trim()),
   });
   useEffect(() => {
@@ -193,11 +199,19 @@ export default function Home() {
     },
     [question],
   );
+  function stopChoice() {
+    choiceReq.current?.abort();
+    setChoosing(false);
+  }
+  function giveFloorToReader() {
+    stopChoice();
+    // The article may finish loading, but typing retires its requested opening line.
+    guideOpening.current = null;
+  }
   function cancelRoomRequests() {
     reportReq.current?.abort();
-    choiceReq.current?.abort();
+    stopChoice();
     setLoading(false);
-    setChoosing(false);
   }
   function close() {
     cancelRoomRequests();
@@ -209,21 +223,23 @@ export default function Home() {
           document.querySelector<HTMLButtonElement>(".window-pet")?.focus({ preventScroll: true });
       });
   }
-  async function analyze(t: Room) {
+  async function analyze(t: Room, openGuide = false) {
     if (t.context.at(-1)?.origin === "sample") {
       const result = sampleRound(t.context);
-      updateBook((b) =>
-        withResult(
+      updateBook((b) => {
+        const prepared = withResult(
           b,
           t.key,
           t.bookmark ? focusRound(result, t.context[0], t.bookmark.excerpt) : result,
-        ),
-      );
+        );
+        return openGuide ? nextLine(prepared, t.key, Date.now()) : prepared;
+      });
       return;
     }
     reportReq.current?.abort();
     const c = new AbortController();
     reportReq.current = c;
+    guideOpening.current = openGuide ? c : null;
     setLoading(true);
     setError(null);
     try {
@@ -251,27 +267,37 @@ export default function Home() {
       const data = await res.json();
       if (c.signal.aborted) return;
       if (!res.ok || !Array.isArray(data.dialogues) || !data.dialogues.length) throw Error();
-      updateBook((b) => withResult(b, t.key, data as RoundtableResult));
+      updateBook((b) => {
+        const prepared = withResult(b, t.key, data as RoundtableResult);
+        return guideOpening.current === c ? nextLine(prepared, t.key, Date.now()) : prepared;
+      });
     } catch {
       if (!c.signal.aborted) setError("这一桌还没连上。你的书签都在，可以再试一次。");
     } finally {
       if (!c.signal.aborted) setLoading(false);
     }
   }
-  function openRoom(
-    context: ReadingTrailItem[] = getTrail(),
-    resumeKey?: string,
-    bookmark?: PassageBookmark,
-  ) {
+  function openRoom(context?: ReadingTrailItem[], resumeKey?: string, bookmark?: PassageBookmark) {
     cancelRoomRequests();
     setError(null);
-    const id = resumeKey ?? context.at(-1)?.url ?? null;
+    setFolding(false);
+    const reading = context ?? getTrail();
+    const id =
+      resumeKey ??
+      (context === undefined ? seatedRoom() : undefined) ??
+      reading.at(-1)?.url ??
+      PERSONAL_ROOM;
     setKey(id);
     setOverlay("cabin");
-    if (!id) return;
-    const b = updateBook((b) => startThread(b, id, context, Date.now(), bookmark));
+    const b = updateBook((b) => startThread(b, id, reading, Date.now(), bookmark));
     const t = b.threads.find((v) => v.key === id);
-    if (t && !t.result) void analyze(t);
+    // Merely unfolding the pet isn't permission to send articles. A chosen clip/article is.
+    if (
+      !t?.result &&
+      t?.context.length &&
+      (t.context.at(-1)?.origin === "sample" || context?.length)
+    )
+      void analyze(t);
   }
   function clip(item: ZhihuItem, mark: PassageBookmark) {
     // AnswerCard already recorded this visit; do not count it twice. The history keeps its usual prefix.
@@ -297,7 +323,11 @@ export default function Home() {
       const res = await fetch("/api/roundtable/follow-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ choiceId: c.id, choiceLabel: c.label, topicTitle: t.title }),
+        body: JSON.stringify({
+          choiceId: c.id,
+          choiceLabel: c.label,
+          topicTitle: t.title,
+        }),
         signal: controller.signal,
       });
       const j = await res.json();
@@ -310,6 +340,7 @@ export default function Home() {
             c.label,
             { text: j.dialogue.text, microAction: j.microAction },
             Date.now(),
+            t.turns.at(-1)?.id,
           ),
         );
     } catch {
@@ -332,7 +363,11 @@ export default function Home() {
         microAction: room.followUp?.microAction ?? r.controlCard.microAction,
         catBadgeTheme: r.controlCard.catBadgeTheme,
         catBadgeName: r.controlCard.catBadgeName,
-        sources: sources.map(({ title, author, url }) => ({ title, author, url })),
+        sources: sources.map(({ title, author, url }) => ({
+          title,
+          author,
+          url,
+        })),
       },
       `round:${room.key}`,
     );
@@ -344,9 +379,6 @@ export default function Home() {
       })),
     );
   }
-  const note = book.threads
-    .find((t) => t.key === book.pending?.key)
-    ?.turns.find((m) => m.id === book.pending?.id);
   return (
     <MotionConfig reducedMotion="user">
       <div className="reading-app">
@@ -495,11 +527,13 @@ export default function Home() {
           <KanshanDock
             count={Math.min(5, history.filter((t) => t.origin === history.at(-1)?.origin).length)}
             onOpen={() => openRoom()}
-            note={note}
-            bookmarked={!!book.threads.find((t) => t.key === book.pending?.key)?.bookmark}
+            invited={!!book.pending}
             onDismiss={() => updateBook(dismissNote)}
             onNote={() => {
-              if (book.pending) openRoom([], book.pending.key);
+              if (!book.pending) return;
+              const id = book.pending.key;
+              updateBook((b) => takeNote(b, id, Date.now()));
+              openRoom([], id);
             }}
           />
         )}
@@ -514,13 +548,24 @@ export default function Home() {
               if (key) setDrafts((d) => ({ ...d, [key]: v }));
             }}
             onClose={close}
+            onFoldStart={() => {
+              rememberSeat(room);
+              setFolding(true);
+              cancelRoomRequests();
+            }}
+            onDraftStart={giveFloorToReader}
+            onPersonal={() => openRoom([], PERSONAL_ROOM)}
             onRetry={() => {
-              if (room) void analyze(room);
+              if (room?.context.length) void analyze(room);
             }}
             onNext={() => {
-              if (key) updateBook((b) => nextLine(b, key, Date.now()));
+              if (!room) return;
+              if (!room.result) void analyze(room, true);
+              else updateBook((b) => nextLine(b, room.key, Date.now()));
             }}
             onSay={(s) => {
+              giveFloorToReader();
+              setError(null);
               if (key) updateBook((b) => say(b, key, s, Date.now()));
             }}
             onChoose={choose}

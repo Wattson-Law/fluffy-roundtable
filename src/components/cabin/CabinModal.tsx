@@ -17,6 +17,9 @@ export function CabinModal({
   draft,
   setDraft,
   onClose,
+  onFoldStart,
+  onDraftStart,
+  onPersonal,
   onRetry,
   onNext,
   onSay,
@@ -31,6 +34,9 @@ export function CabinModal({
   draft: string;
   setDraft: (s: string) => void;
   onClose: () => void;
+  onFoldStart: () => void;
+  onDraftStart: () => void;
+  onPersonal: () => void;
   onRetry: () => void;
   onNext: () => void;
   onSay: (s: string) => void;
@@ -44,6 +50,7 @@ export function CabinModal({
   const closing = useRef(0);
   function fold() {
     if (leaving) return;
+    onFoldStart();
     if (reduced) {
       onClose();
       return;
@@ -53,7 +60,7 @@ export function CabinModal({
   }
   useEffect(() => () => clearTimeout(closing.current), []);
   const [settled, setSettled] = useState(!!room?.turns.length || !!reduced),
-    [cardOpen, setCardOpen] = useState(!!room?.committed),
+    [cardOpen, setCardOpen] = useState(!!room?.committed && !room?.conversation),
     [showLog, setShowLog] = useState(false);
   const logRef = useRef<HTMLDivElement>(null),
     flow = useRef<HTMLDivElement>(null),
@@ -70,15 +77,22 @@ export function CabinModal({
   }, [settled, reduced]);
   const r = room?.result,
     turns = room?.turns,
-    started = !!room?.cursor;
+    started = !!turns?.length,
+    personal = !room?.context.length,
+    readerLed = !!room?.conversation || personal;
   const line = turns?.findLast((t) => t.speaker !== "user");
   const count = turns?.length ?? 0,
-    finished = !!room && !!r && room.cursor >= r.dialogues.length;
+    finished = !!room && !!r && room.cursor >= r.dialogues.length,
+    cardAvailable = !!r && (finished || readerLed);
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [count, showLog]);
   useEffect(() => {
-    if (cardOpen) cardRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
+    if (cardOpen)
+      cardRef.current?.scrollIntoView({
+        block: "nearest",
+        behavior: "instant",
+      });
   }, [cardOpen]);
   function locateQuote(q: QuoteRef) {
     const m = room?.bookmark;
@@ -87,9 +101,12 @@ export function CabinModal({
       : undefined;
   }
   const pinnedEvidence = !!(line?.quoteRef && locateQuote(line.quoteRef));
-  const inputs = !!room && started;
+  const inputs = !!room && settled && !leaving;
   function submit() {
     if (!inputs || !draft.trim() || composing.current) return;
+    setShowLog(false);
+    setCardOpen(false);
+    flow.current?.scrollTo({ top: 0 });
     onSay(draft);
     setDraft("");
   }
@@ -113,24 +130,33 @@ export function CabinModal({
         </header>
         <div className="room-context">
           <BookOpen size={14} />
-          <span>{room?.context.at(-1)?.origin === "sample" ? "本地试读" : "刚刚读到"}</span>
-          <b>{room?.title ?? "还没有夹上书签"}</b>
+          <span>
+            {personal
+              ? "不带文章"
+              : room?.context.at(-1)?.origin === "sample"
+                ? "本地试读"
+                : "刚刚读到"}
+          </span>
+          <b>{room?.title ?? "窗边随聊"}</b>
         </div>
         <div className="room-flow" ref={flow}>
           <RoomScene line={line} settled={settled} />
-          {room?.bookmark && (
+          {room?.bookmark && (!readerLed || pinnedEvidence) && (
             <BookmarkTicket
               verified={pinnedEvidence}
               mark={room.bookmark}
               onLocate={() => onLocate(room.bookmark!)}
             />
           )}
-          {!room ? (
-            <div className="gather-note">
-              <small>窗边的看山</small>
-              <p>书页还是空的。先去读一篇回答，等你回来，我们就从那篇聊起。</p>
+          {personal && !started ? (
+            <div className="gather-note window-welcome">
+              <small>
+                <Feather size={13} /> 呼噜猫把椅子挪近了一点
+              </small>
+              <p>来啦，坐会儿。今天过得怎么样？</p>
+              <span>说自己的事也行，不用先带一篇文章。</span>
             </div>
-          ) : !started && room.bookmark ? null : !started ? (
+          ) : !started && room?.bookmark ? null : !started && room ? (
             <div className="gather-note">
               <small>
                 <Feather size={13} /> 看山抄下这一句
@@ -138,149 +164,194 @@ export function CabinModal({
               <p>
                 {room.context.at(-1)?.contentText.trim().slice(0, 76) || room.context.at(-1)?.title}
               </p>
-              <span>本轮带进来 {room.context.length} 篇。你来决定什么时候开聊。</span>
+              <span>
+                {room.context.at(-1)?.origin === "sample"
+                  ? "本地试读，不会发送文章。"
+                  : r || loading
+                    ? "看山在整理这篇的材料。"
+                    : "选文章导读时，才提交本轮摘录。"}
+                也可以不聊文章。
+              </span>
+              <button className="paper-link" onClick={onPersonal}>
+                不带文章，去窗边坐坐 →
+              </button>
             </div>
           ) : (
             <>
               {line?.quoteRef && !pinnedEvidence && (
                 <Evidence quote={line.quoteRef} onLocate={locateQuote(line.quoteRef)} />
               )}
-              {line?.speaker === "shiba" && r && <Sources sources={r.curatedSources} />}
-              <div className="transcript">
-                <div className="transcript-head">
-                  <strong>
-                    <MessageSquare size={15} /> 聊天记录
-                  </strong>
-                  <button onClick={() => setShowLog(!showLog)} aria-expanded={showLog}>
-                    {showLog ? "收起" : "展开全部"} · {count}
-                  </button>
+              {line?.speaker === "shiba" && line.kind === "script" && r && (
+                <Sources sources={r.curatedSources} />
+              )}
+              {count > 1 && (
+                <div className="transcript">
+                  <div className="transcript-head">
+                    <strong>
+                      <MessageSquare size={15} /> {showLog ? "聊天记录" : "刚才聊到"}
+                    </strong>
+                    <button onClick={() => setShowLog(!showLog)} aria-expanded={showLog}>
+                      {showLog ? "收起" : "展开全部"} · {count}
+                    </button>
+                  </div>
+                  <div
+                    className={"chat-log " + (showLog ? "full" : "")}
+                    ref={logRef}
+                    role="log"
+                    aria-label="聊天记录"
+                    aria-live="off"
+                  >
+                    {(showLog ? turns : turns?.slice(0, -1).slice(-2))?.map((m) => (
+                      <div
+                        key={m.id}
+                        data-kind={m.kind}
+                        className={m.speaker === "user" ? "user-line" : ""}
+                      >
+                        <b>
+                          {m.speaker === "user" ? "你" : names[m.speaker]}
+                          {m.kind === "note" ? " · 主动便签" : ""}
+                        </b>
+                        <span>{m.text}</span>
+                        {showLog && m.quoteRef && (
+                          <Evidence quote={m.quoteRef} onLocate={locateQuote(m.quoteRef)} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div
-                  className={"chat-log " + (showLog ? "full" : "")}
-                  ref={logRef}
-                  role="log"
-                  aria-label="聊天记录"
-                  aria-live="off"
-                >
-                  {(showLog ? turns : turns?.slice(-2))?.map((m) => (
-                    <div
-                      key={m.id}
-                      data-kind={m.kind}
-                      className={m.speaker === "user" ? "user-line" : ""}
-                    >
-                      <b>
-                        {m.speaker === "user" ? "你" : names[m.speaker]}
-                        {m.kind === "note" ? " · 主动便签" : ""}
-                      </b>
-                      <span>{m.text}</span>
-                      {showLog && m.quoteRef && (
-                        <Evidence quote={m.quoteRef} onLocate={locateQuote(m.quoteRef)} />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
             </>
           )}
-          {room && r && started && (
+          {room && !personal && (started || readerLed) && (
             <details className="context-details">
               <summary>本轮阅读与原帖 · {room.context.length}</summary>
+              {readerLed && room.bookmark && !pinnedEvidence && (
+                <BookmarkTicket mark={room.bookmark} onLocate={() => onLocate(room.bookmark!)} />
+              )}
               {room.context.map((t) => (
                 <a key={t.url} href={t.url} target="_blank" rel="noreferrer">
                   {t.title} ↗
                 </a>
               ))}
-              <p>
-                {r.radar.summaryTag}
-                {room.context.at(-1)?.origin !== "sample" &&
-                  ` · 干货 ${r.radar.drynessScore} / 情绪 ${r.radar.anxietyScore} / 引流线索 ${r.radar.adRiskScore}`}
-              </p>
-              {r.meta.degraded && <p>{r.meta.note || "本轮仅使用已取得的材料。"}</p>}
+              {r && (
+                <p>
+                  {r.radar.summaryTag}
+                  {room.context.at(-1)?.origin !== "sample" &&
+                    ` · 干货 ${r.radar.drynessScore} / 情绪 ${r.radar.anxietyScore} / 引流线索 ${r.radar.adRiskScore}`}
+                </p>
+              )}
+              {!r && readerLed && (
+                <button className="paper-link" onClick={onRetry} disabled={loading}>
+                  {loading ? "正在整理原文…" : "单独整理这篇的资料 →"}
+                </button>
+              )}
+              {r?.meta.degraded && <p>{r.meta.note || "本轮仅使用已取得的材料。"}</p>}
+              {readerLed && cardAvailable && !cardOpen && (
+                <button className="paper-link" onClick={() => setCardOpen(true)}>
+                  查看这篇的掌控卡 →
+                </button>
+              )}
+              <button className="paper-link" onClick={onPersonal}>
+                不带文章，去窗边坐坐 →
+              </button>
             </details>
           )}
-          {cardOpen && room && finished && (
+          {cardOpen && room && cardAvailable && (
             <div ref={cardRef}>
               <ControlCard room={room} busy={choosing} onChoose={onChoose} onCommit={onCommit} />
             </div>
           )}
-          {error && (
+          {error && (!readerLed || cardOpen) && (
             <p className="room-error" role="status">
               {error} {room && !r && <button onClick={onRetry}>再试一次</button>}
             </p>
           )}
         </div>
         <footer className="room-footer">
-          {!room ? (
-            <button className="room-continue" onClick={fold}>
-              回去读一篇 <ArrowRight size={17} />
-            </button>
-          ) : !settled ? (
+          {!settled ? (
             <button className="room-continue" onClick={() => setSettled(true)}>
               跳过入场 <ArrowRight size={17} />
             </button>
-          ) : !started ? (
-            <button className="room-continue" disabled={!r || loading} onClick={onNext}>
-              {loading ? "看山正在翻阅原帖…" : r ? "开聊 · 听呼噜猫说" : "等待原帖整理"}{" "}
-              <ArrowRight size={17} />
-            </button>
           ) : (
-            <>
-              {!finished ? (
-                <button
-                  className="room-continue"
-                  onClick={() => {
-                    setShowLog(false);
-                    onNext();
-                    flow.current?.scrollTo({ top: 0 });
-                  }}
-                >
-                  听下一句{" "}
-                  <small>
-                    {room.cursor} / {r?.dialogues.length}
-                  </small>
-                  <ArrowRight size={15} />
-                </button>
-              ) : (
-                !cardOpen && (
+            room && (
+              <>
+                {!readerLed && !started && (
+                  <button
+                    className="room-continue"
+                    disabled={loading || !!draft.trim()}
+                    onClick={onNext}
+                  >
+                    {loading ? "看山正在翻阅原帖…" : "开聊 · 听呼噜猫说"}
+                    <ArrowRight size={17} />
+                  </button>
+                )}
+                {!readerLed && started && !finished && (
+                  <button
+                    className="room-continue"
+                    disabled={!!draft.trim()}
+                    onClick={() => {
+                      setShowLog(false);
+                      onNext();
+                      flow.current?.scrollTo({ top: 0 });
+                    }}
+                  >
+                    听下一句{" "}
+                    <small>
+                      {room.cursor} / {r?.dialogues.length}
+                    </small>
+                    <ArrowRight size={15} />
+                  </button>
+                )}
+                {!readerLed && finished && !cardOpen && (
                   <button className="room-continue" onClick={() => setCardOpen(true)}>
                     接过看山的掌控卡 <ArrowRight size={15} />
                   </button>
-                )
-              )}
-              <form
-                className="chat-compose"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  submit();
-                }}
-              >
-                <input
-                  value={draft}
-                  maxLength={400}
-                  onCompositionStart={() => {
-                    composing.current = true;
+                )}
+                {readerLed && (
+                  <div className="reader-floor">
+                    <i />
+                    {started ? "话头留给你，不着急回。" : "窗边有位置，随时开口。"}
+                  </div>
+                )}
+                <form
+                  className="chat-compose"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submit();
                   }}
-                  onCompositionEnd={() => {
-                    composing.current = false;
-                  }}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      (e.nativeEvent.isComposing ||
-                        e.nativeEvent.keyCode === 229 ||
-                        composing.current)
-                    )
-                      e.preventDefault();
-                  }}
-                  onChange={(e) => setDraft(e.target.value)}
-                  aria-label="我也说一句"
-                  placeholder="我也说一句…"
-                />
-                <button disabled={!draft.trim()} aria-label="发送消息">
-                  <ArrowUp size={18} />
-                </button>
-              </form>
-            </>
+                >
+                  <input
+                    value={draft}
+                    maxLength={400}
+                    onCompositionStart={() => {
+                      composing.current = true;
+                      onDraftStart();
+                    }}
+                    onCompositionEnd={() => {
+                      composing.current = false;
+                    }}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        (e.nativeEvent.isComposing ||
+                          e.nativeEvent.keyCode === 229 ||
+                          composing.current)
+                      )
+                        e.preventDefault();
+                    }}
+                    onChange={(e) => {
+                      onDraftStart();
+                      setDraft(e.target.value);
+                    }}
+                    aria-label="我也说一句"
+                    placeholder={started ? "我也说一句…" : "从你想说的那句开始…"}
+                  />
+                  <button disabled={!draft.trim()} aria-label="发送消息">
+                    <ArrowUp size={18} />
+                  </button>
+                </form>
+              </>
+            )
           )}
         </footer>
       </div>
