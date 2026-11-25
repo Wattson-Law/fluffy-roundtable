@@ -28,6 +28,14 @@ def boot(browser, width, height):
     ctx.route(
         "**/api/zhihu/quota", lambda r: r.fulfill(json={"live": False, "items": []})
     )
+    ctx.route(
+        "**/api/roundtable/chat",
+        lambda r: (
+            r.fulfill(json={"enabled": False})
+            if r.request.method == "GET"
+            else r.abort()
+        ),
+    )
     p = ctx.new_page()
     errors, posts = [], []
     p.on("pageerror", lambda e: errors.append(str(e)))
@@ -141,7 +149,8 @@ def race(browser, base, interrupt):
     pending = []
     p.route("**/api/roundtable/follow-up", lambda r: pending.append(r))
     p.goto(base)
-    button(p, "打开毛茸茸小屋").click()
+    # A persisted legacy article is available only when the reader chooses it.
+    button(p, row["title"]).click()
     button(p, "接过看山的掌控卡").click()
     with p.expect_request("**/api/roundtable/follow-up"):
         button(p, "看一张卡").click()
@@ -189,6 +198,9 @@ def article_entry(browser, base):
     p.route("**/api/roundtable/analyze", lambda r: pending.append(r))
     p.goto(base)
     button(p, "打开毛茸茸小屋").click()
+    expect(p.locator(".room-context")).to_contain_text("不带文章")
+    button(p, "关闭小屋").click()
+    button(p, row["title"]).click()
     field = p.get_by_role("textbox", name="我也说一句")
     expect(field).to_be_visible()
     assert not posts, "opening the pet is not consent to submit the article"

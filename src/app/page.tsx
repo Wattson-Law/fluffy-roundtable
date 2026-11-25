@@ -5,7 +5,14 @@ import { ArrowUpRight, BookOpen, Bookmark, Feather, Library } from "lucide-react
 import { CabinModal } from "@/components/cabin/CabinModal";
 import { KanshanDock } from "@/components/companion/KanshanDock";
 import { PartnerGuide } from "@/components/companion/PartnerGuide";
+import { ListeningDesk } from "@/components/companion/ListeningDesk";
+import { useListeningTopics } from "@/components/companion/useListeningTopics";
+import { ThoughtShelf } from "@/components/companion/ThoughtShelf";
+import { saveReaderThought, removeReaderThought, type ReaderThought } from "@/lib/reader-thoughts";
+import { MemoryShelf, MemorySlip } from "@/components/companion/MemoryShelf";
+import { editMemory, reviseMemory, type MemoryAction } from "@/lib/shared-memory";
 import { ReadingNotebook } from "@/components/companion/ReadingNotebook";
+import { usePetDialogue } from "@/components/companion/usePetDialogue";
 import { useCatDelivery } from "@/components/companion/useCatDelivery";
 import { CatJournalDrawer } from "@/components/journal/CatJournalDrawer";
 import { HotFeedList } from "@/components/zhihu-sim/HotFeedList";
@@ -18,6 +25,7 @@ import {
   getHistory,
   getJournal,
   getTrail,
+  sessionRoomKey,
   memoryOnly,
   pushTrail,
   rememberSeat,
@@ -31,14 +39,13 @@ import {
   changeRoom,
   dismissNote,
   takeNote,
-  PERSONAL_ROOM,
   duties,
   emptyBook,
   names,
   nextLine,
-  say,
   setNotes,
   startThread,
+  recordListeningTurn,
   withResult,
   type Book,
   type Room,
@@ -46,6 +53,7 @@ import {
 import { bookmarkKey, requestFocus } from "@/lib/bookmarks";
 import { focusRound } from "@/lib/focused-round";
 import { PassageDialog } from "@/components/companion/PassageBookmark";
+import { readingForRoom } from "@/lib/table-reading";
 import { art } from "@/lib/art";
 import { sampleItems, sampleRound } from "@/lib/reading-samples";
 import type {
@@ -78,6 +86,7 @@ export default function Home() {
   const [history, setHistory] = useState<ReadingTrailItem[]>([]),
     [journal, setJournal] = useState<JournalEntry[]>([]),
     [book, setBook] = useState<Book>(emptyBook),
+    [recentCount, setRecentCount] = useState(0),
     [temporary, setTemporary] = useState(false);
   const [overlay, setOverlay] = useState<Overlay>(null),
     [key, setKey] = useState<string | null>(null),
@@ -90,7 +99,22 @@ export default function Home() {
     reportReq = useRef<AbortController | null>(null),
     choiceReq = useRef<AbortController | null>(null),
     guideOpening = useRef<AbortController | null>(null);
+  const chat = usePetDialogue();
   const room = book.threads.find((t) => t.key === key);
+  const [thoughtEditing, setThoughtEditing] = useState(false);
+  const desk = useListeningTopics({
+    hot,
+    live,
+    roomKey: overlay === "cabin" && !folding ? key : null,
+    onLine: (line, atKey) =>
+      updateBook((b) =>
+        recordListeningTurn(b, atKey, line.speaker, line.text, line.at, line.topic.url),
+      ),
+  });
+  const pauseDesk = desk.stop;
+  useEffect(() => {
+    if (thoughtEditing) pauseDesk();
+  }, [thoughtEditing, pauseDesk]);
   const draft = key ? (drafts[key] ?? "") : "";
   useEffect(() => {
     const entry = sampleItems.find(
@@ -103,6 +127,7 @@ export default function Home() {
     }
     function sync() {
       setHistory(getHistory());
+      setRecentCount(getTrail().length);
       setJournal(getJournal());
       setBook(getBook());
       setTemporary(memoryOnly());
@@ -124,7 +149,7 @@ export default function Home() {
       .then((r) => r.json())
       .then((j) => {
         setHot(j.items ?? []);
-        setLive(!j.degraded && !!j.items?.length);
+        setLive(j.degraded === false && !!j.items?.length);
       })
       .catch(() => {})
       .finally(() => {
@@ -143,10 +168,14 @@ export default function Home() {
     activeKey: overlay === "cabin" ? key : null,
     busy:
       !!viewing ||
+      thoughtEditing ||
+      desk.searching ||
+      !!desk.topic ||
       overlay === "friends" ||
       overlay === "shelf" ||
       overlay === "journal" ||
-      (overlay === "cabin" && (!room?.turns.length || loading || choosing || folding)) ||
+      (overlay === "cabin" &&
+        (!room?.turns.length || loading || choosing || folding || chat.busy)) ||
       Object.values(drafts).some((v) => !!v.trim()),
   });
   useEffect(() => {
@@ -199,6 +228,28 @@ export default function Home() {
     },
     [question],
   );
+  const recentHuman = room?.turns.findLast((t) => t.speaker === "user");
+  const newMemory = book.memories?.find((m) => m.sourceTurn === recentHuman?.id);
+  function manageMemory(id: string, action: MemoryAction) {
+    chat.changeScope();
+    updateBook((b) => editMemory(b, id, action, Date.now()));
+  }
+  function saveThought(thought: ReaderThought) {
+    const b = updateBook((b) => ({ ...b, thoughts: saveReaderThought(b.thoughts, thought) }));
+    return !!b.thoughts?.some((t) => t.id === thought.id);
+  }
+  function discussThought(thought: ReaderThought) {
+    // Opening a note never sends it. Even this explicit next step only prepares an editable draft.
+    const id = sessionRoomKey();
+    openRoom([], id);
+    setDrafts((prev) => ({ ...prev, [id]: thought.text }));
+  }
+  function fromShelf(item: ReadingTrailItem) {
+    const past = getBook()
+      .threads.filter((r) => !r.bookmark && r.context.at(-1)?.url === item.url && r.turns.length)
+      .sort((a, b) => b.touched - a.touched)[0];
+    openRoom([item], past?.key);
+  }
   function stopChoice() {
     choiceReq.current?.abort();
     setChoosing(false);
@@ -208,7 +259,15 @@ export default function Home() {
     // The article may finish loading, but typing retires its requested opening line.
     guideOpening.current = null;
   }
+  function takePublicFloor() {
+    giveFloorToReader();
+    chat.changeScope();
+    setError(null);
+  }
   function cancelRoomRequests() {
+    desk.cancel();
+    chat.changeScope();
+    guideOpening.current = null;
     reportReq.current?.abort();
     stopChoice();
     setLoading(false);
@@ -285,18 +344,14 @@ export default function Home() {
     const id =
       resumeKey ??
       (context === undefined ? seatedRoom() : undefined) ??
-      reading.at(-1)?.url ??
-      PERSONAL_ROOM;
+      sessionRoomKey(reading.at(-1)?.url);
     setKey(id);
     setOverlay("cabin");
     const b = updateBook((b) => startThread(b, id, reading, Date.now(), bookmark));
     const t = b.threads.find((v) => v.key === id);
-    // Merely unfolding the pet isn't permission to send articles. A chosen clip/article is.
-    if (
-      !t?.result &&
-      t?.context.length &&
-      (t.context.at(-1)?.origin === "sample" || context?.length)
-    )
+    rememberSeat(t);
+    // A shelf/dock entry previews locally. Only an explicitly chosen clip or guide starts analysis.
+    if (!t?.result && t?.context.length && (t.context.at(-1)?.origin === "sample" || bookmark))
       void analyze(t);
   }
   function clip(item: ZhihuItem, mark: PassageBookmark) {
@@ -307,13 +362,14 @@ export default function Home() {
     if (!row) return;
     openRoom(
       [{ ...row, contentText: mark.before + mark.excerpt + mark.after }],
-      bookmarkKey(mark),
+      sessionRoomKey(bookmarkKey(mark)),
       mark,
     );
   }
   async function choose(c: { id: string; label: string }) {
     if (!room || choosing || room.committed) return;
     const t = room;
+    chat.cancel();
     choiceReq.current?.abort();
     const controller = new AbortController();
     choiceReq.current = controller;
@@ -351,6 +407,7 @@ export default function Home() {
   }
   function commit() {
     if (!room?.result || room.committed) return;
+    chat.cancel();
     const { result: r } = room;
     const sources = [
       ...new Map([...room.context, ...r.curatedSources].map((s) => [s.url, s])).values(),
@@ -489,7 +546,7 @@ export default function Home() {
                       .reverse()
                       .map((t) => (
                         <li key={t.url}>
-                          <button onClick={() => openRoom([t])}>{t.title}</button>
+                          <button onClick={() => fromShelf(t)}>{t.title}</button>
                         </li>
                       ))}
                   </ul>
@@ -530,15 +587,16 @@ export default function Home() {
         </main>
         {!overlay && (
           <KanshanDock
-            count={Math.min(5, history.filter((t) => t.origin === history.at(-1)?.origin).length)}
+            count={recentCount}
             onOpen={() => openRoom()}
             invited={!!book.pending}
             onDismiss={() => updateBook(dismissNote)}
             onNote={() => {
               if (!book.pending) return;
               const id = book.pending.key;
-              updateBook((b) => takeNote(b, id, Date.now()));
-              openRoom([], id);
+              const target = seatedRoom() === id ? id : sessionRoomKey();
+              updateBook((b) => takeNote(b, id, Date.now(), target));
+              openRoom([], target);
             }}
           />
         )}
@@ -546,27 +604,91 @@ export default function Home() {
           <CabinModal
             key={key ?? "empty"}
             room={room}
+            publicTopic={desk.topic?.title}
+            publicDesk={
+              <fieldset className="listening-guard" disabled={thoughtEditing || !!draft.trim()}>
+                <ListeningDesk
+                  desk={desk}
+                  onTakeFloor={takePublicFloor}
+                  onCompose={() => {
+                    if (key && !draft.trim()) setDrafts((d) => ({ ...d, [key]: "我来出题：" }));
+                    document.querySelector<HTMLInputElement>(".chat-compose input")?.focus();
+                  }}
+                />
+              </fieldset>
+            }
+            cabinExtras={
+              room && (
+                <ThoughtShelf
+                  mode="cabin"
+                  key={room.key}
+                  room={room}
+                  source={
+                    desk.topic
+                      ? desk.topic.url
+                        ? { title: desk.topic.title, url: desk.topic.url }
+                        : null
+                      : room.context.at(-1)
+                  }
+                  thoughts={book.thoughts}
+                  onSave={saveThought}
+                  onEditingChange={setThoughtEditing}
+                />
+              )
+            }
+            memorySlip={
+              newMemory ? (
+                <MemorySlip memory={newMemory} undo={() => manageMemory(newMemory.id, "forget")} />
+              ) : null
+            }
             draft={draft}
             setDraft={(v) => {
               if (key) setDrafts((d) => ({ ...d, [key]: v }));
             }}
             onClose={close}
             onFoldStart={() => {
-              rememberSeat(room);
               setFolding(true);
               cancelRoomRequests();
             }}
-            onDraftStart={giveFloorToReader}
+            onDraftStart={() => {
+              giveFloorToReader();
+              desk.stop();
+            }}
             onSay={(s) => {
               giveFloorToReader();
               setError(null);
-              if (key) updateBook((b) => say(b, key, s, Date.now()));
+              if (!key) return;
+              if (
+                desk.handleText(s, () => {
+                  takePublicFloor();
+                  updateBook((b) => recordListeningTurn(b, key, "user", s.trim(), Date.now()));
+                })
+              )
+                return;
+              chat.send(key, s);
+            }}
+            chat={{
+              model: chat.model,
+              busy: chat.busy,
+              checking: chat.checking,
+              notice: chat.notice,
+              preview: readingForRoom(room),
+              shared: !!chat.sharedFor(room),
+              onToggleReading: () => {
+                if (!room) return;
+                if (chat.sharedFor(room)) chat.changeScope();
+                else chat.changeScope(room.key, readingForRoom(room));
+              },
+              floor: chat.floorFor(room),
+              onPass: () => {
+                if (key) chat.pass(key);
+              },
             }}
             article={{
               loading,
               error,
               choosing,
-              onPersonal: () => openRoom([], PERSONAL_ROOM),
+              onPersonal: () => openRoom([], sessionRoomKey()),
               onRetry: () => {
                 if (room?.context.length) void analyze(room);
               },
@@ -586,7 +708,28 @@ export default function Home() {
             history={history}
             book={book}
             temporary={temporary}
-            onOpen={(t) => openRoom([t])}
+            onlineChat={!!chat.model}
+            thoughtPanel={
+              <ThoughtShelf
+                mode="shelf"
+                thoughts={book.thoughts}
+                onDiscuss={discussThought}
+                onRemove={(id) =>
+                  updateBook((b) => ({ ...b, thoughts: removeReaderThought(b.thoughts, id) }))
+                }
+              />
+            }
+            memoryPanel={
+              <MemoryShelf
+                book={book}
+                onAction={manageMemory}
+                onEdit={(id, value) => {
+                  chat.changeScope();
+                  updateBook((b) => reviseMemory(b, id, value, Date.now()));
+                }}
+              />
+            }
+            onOpen={fromShelf}
             onResume={(id) => openRoom([], id)}
             onClose={close}
             onToggle={() => updateBook((b) => setNotes(b, !b.enabled))}

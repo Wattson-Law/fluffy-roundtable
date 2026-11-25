@@ -1535,3 +1535,22 @@ button.evidence-card { width: 100%; text-align: left; }
 .reader-floor i { width:6px; height:6px; background:#78917a; border-radius:50%; }
 .paper-link { display:block; color:var(--forest); font-size:12px; padding:6px 0; text-decoration:underline; text-underline-offset:3px; }
 .window-welcome p { margin-block:5px; }
+.pet-test-floor { justify-content:space-between; flex-wrap:wrap; gap:3px 10px; }
+.pet-test-floor > span { display:inline-flex; align-items:center; gap:6px; }
+.pet-test-floor .paper-link { margin:0; padding:2px 0; font-size:12px; }
+.speech-paper .voice-source { margin-left:6px; padding-left:6px; border-left:1px solid currentColor; font:inherit; }
+
+.table-reading { margin: 8px 2px; padding: 9px 12px; border: 1px solid #d8d8c9; border-radius: 10px; background: #fbf8ef; color: #443e34; }
+.table-reading[data-shared="true"] { background: #f1f5eb; border-color: #bccbb4; }
+.table-reading > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.table-reading strong { font-size: 14px; } .table-reading button { padding: 5px 10px; border-radius: 15px; border: 1px solid #879984; color: #36533d; background: #fffdf8; font-size: 13px; }
+.table-reading q { display: block; margin: 3px 0; font-size: 13px; overflow-wrap: anywhere; }
+.table-reading small { display: block; font-size: 11px; color: #536050; }
+
+/* New notes live on the same paper shelf; none of these controls is a second chat. */
+.shelf-tabs { flex-wrap:wrap; }
+.memory-shelf { display:grid; gap:.65rem; color:#514941; }
+.memory-row form, .memory-row label {display:grid; gap:.4rem;}
+.memory-row input {width:100%;border:1px solid #bcb1a2;border-radius:.5rem;padding:.4rem .6rem;color:inherit;background:#fffdf8;}
+.memory-slip {display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;padding:.4rem .7rem;color:#5f514b;background:#f8f2e6;font-size:.78rem;border-radius:.45rem;overflow-wrap:anywhere;}
+.memory-slip button,.memory-shelf .privacy-row button {white-space:nowrap;color:#675042;text-decoration:underline;text-underline-offset:2px;}

@@ -1,10 +1,12 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "framer-motion";
 import { ArrowRight, ArrowUp, BookOpen, MessageSquare, Feather, X } from "lucide-react";
 import { BookmarkTicket } from "@/components/companion/PassageBookmark";
 import type { PassageBookmark, QuoteRef } from "@/types";
 import { art } from "@/lib/art";
+import type { TableReading } from "@/lib/table-reading";
+import { zhihuSource } from "@/lib/listening-topics";
 import { names, type Room } from "@/lib/companion";
 import { PaperDialog } from "@/components/companion/PaperDialog";
 import { RoomScene, Evidence, Sources } from "./AnimalStage";
@@ -31,6 +33,11 @@ export function CabinModal({
   onDraftStart,
   onSay,
   article,
+  chat,
+  cabinExtras,
+  publicDesk,
+  publicTopic,
+  memorySlip,
 }: {
   room?: Room;
   draft: string;
@@ -40,6 +47,21 @@ export function CabinModal({
   onDraftStart?: () => void;
   onSay: (s: string) => void;
   article?: ArticleControls;
+  cabinExtras?: ReactNode;
+  publicDesk?: ReactNode;
+  publicTopic?: string;
+  memorySlip?: ReactNode;
+  chat?: {
+    model: string | null;
+    busy: boolean;
+    checking: boolean;
+    notice: string;
+    preview?: TableReading | null;
+    shared?: boolean;
+    onToggleReading?: () => void;
+    floor: "none" | "offer" | "reader";
+    onPass: () => void;
+  };
 }) {
   const { loading, error } = article ?? {};
   const reduced = useReducedMotion();
@@ -78,6 +100,7 @@ export function CabinModal({
     personal = !room?.context.length,
     readerLed = !!room?.conversation || personal;
   const line = turns?.findLast((t) => t.speaker !== "user");
+  const readerLast = turns?.at(-1)?.speaker === "user";
   const count = turns?.length ?? 0,
     finished = !!room && !!r && room.cursor >= r.dialogues.length,
     cardAvailable = !!r && (finished || readerLed);
@@ -100,7 +123,7 @@ export function CabinModal({
   const pinnedEvidence = !!(line?.quoteRef && locateQuote(line.quoteRef));
   const inputs = !!room && settled && !leaving;
   function submit() {
-    if (!inputs || !draft.trim() || composing.current) return;
+    if (!inputs || chat?.checking || !draft.trim() || composing.current) return;
     setShowLog(false);
     setCardOpen(false);
     flow.current?.scrollTo({ top: 0 });
@@ -128,16 +151,46 @@ export function CabinModal({
         <div className="room-context">
           <BookOpen size={14} />
           <span>
-            {personal
-              ? "不带文章"
-              : room?.context.at(-1)?.origin === "sample"
-                ? "本地试读"
-                : "刚刚读到"}
+            {publicTopic
+              ? "桌边旁听"
+              : personal
+                ? "不带文章"
+                : room?.context.at(-1)?.origin === "sample"
+                  ? "本地试读"
+                  : "刚刚读到"}
           </span>
-          <b>{room?.title ?? "窗边随聊"}</b>
+          <b>{publicTopic ?? room?.title ?? "窗边随聊"}</b>
         </div>
         <div className="room-flow" ref={flow}>
-          <RoomScene line={line} settled={settled} />
+          <RoomScene line={line} settled={settled} labelLocal={!!chat?.model} />
+          {publicTopic && inputs && publicDesk}
+          {!publicTopic && line?.kind === "listening" && zhihuSource(line.publicUrl) && (
+            <a
+              className="paper-link"
+              href={zhihuSource(line.publicUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              回看这条知乎原帖 ↗
+            </a>
+          )}
+          {!publicTopic && chat?.model && chat.preview && (
+            <section className="table-reading" data-shared={!!chat.shared} aria-label="本桌选段">
+              <div>
+                <strong>{chat.shared ? "桌上原句" : "要一起读这段吗？"}</strong>
+                <button type="button" aria-pressed={!!chat.shared} onClick={chat.onToggleReading}>
+                  {chat.shared ? "撤下原句" : "把这段放上桌"}
+                </button>
+              </div>
+              <small>《{chat.preview.title}》</small>
+              <q>{chat.preview.excerpt}</q>
+              <small>
+                {chat.shared
+                  ? "聊原文时只带这段；只想吐槽时不带。撤下或收屋后，刚才的聊天也不再发给伙伴。"
+                  : "现在只有你看得到。放上桌后，聊到原文时才把标题和这段话交给在线伙伴。"}
+              </small>
+            </section>
+          )}
           {article && room?.bookmark && (!readerLed || pinnedEvidence) && (
             <BookmarkTicket
               verified={pinnedEvidence}
@@ -155,20 +208,25 @@ export function CabinModal({
             </div>
           ) : !started && room?.bookmark ? null : !started && room && article ? (
             <div className="gather-note">
-              <small>
-                <Feather size={13} /> 看山抄下这一句
-              </small>
-              <p>
-                {room.context.at(-1)?.contentText.trim().slice(0, 76) || room.context.at(-1)?.title}
-              </p>
-              <span>
-                {room.context.at(-1)?.origin === "sample"
-                  ? "本地试读，不会发送文章。"
-                  : r || loading
-                    ? "看山在整理这篇的材料。"
-                    : "选文章导读时，才提交本轮摘录。"}
-                也可以不聊文章。
-              </span>
+              {!(chat?.model && chat.preview) && (
+                <>
+                  <small>
+                    <Feather size={13} /> 看山抄下这一句
+                  </small>
+                  <p>
+                    {room.context.at(-1)?.contentText.trim().slice(0, 76) ||
+                      room.context.at(-1)?.title}
+                  </p>
+                  <span>
+                    {room.context.at(-1)?.origin === "sample"
+                      ? "本地试读，不会发送文章。"
+                      : r || loading
+                        ? "看山在整理这篇的材料。"
+                        : "选文章导读时，才提交本轮摘录。"}
+                    也可以不聊文章。
+                  </span>
+                </>
+              )}
               <button className="paper-link" onClick={article.onPersonal}>
                 不带文章，去窗边坐坐 →
               </button>
@@ -181,7 +239,7 @@ export function CabinModal({
               {line?.speaker === "shiba" && line.kind === "script" && r && (
                 <Sources sources={r.curatedSources} />
               )}
-              {count > 1 && (
+              {(count > 1 || readerLast) && (
                 <div className="transcript">
                   <div className="transcript-head">
                     <strong>
@@ -198,28 +256,48 @@ export function CabinModal({
                     aria-label="聊天记录"
                     aria-live="off"
                   >
-                    {(showLog ? turns : turns?.slice(0, -1).slice(-2))?.map((m) => (
-                      <div
-                        key={m.id}
-                        data-kind={m.kind}
-                        className={m.speaker === "user" ? "user-line" : ""}
-                      >
-                        <b>
-                          {m.speaker === "user" ? "你" : names[m.speaker]}
-                          {m.kind === "note" ? " · 主动便签" : ""}
-                        </b>
-                        <span>{m.text}</span>
-                        {showLog && m.quoteRef && (
-                          <Evidence quote={m.quoteRef} onLocate={locateQuote(m.quoteRef)} />
-                        )}
-                      </div>
-                    ))}
+                    {(showLog ? turns : (readerLast ? turns : turns?.slice(0, -1))?.slice(-2))?.map(
+                      (m) => (
+                        <div
+                          key={m.id}
+                          data-kind={m.kind}
+                          className={m.speaker === "user" ? "user-line" : ""}
+                        >
+                          <b>
+                            {m.speaker === "user" ? "你" : names[m.speaker]}
+                            {m.kind === "note"
+                              ? " · 主动便签"
+                              : m.kind === "reply" && m.via === "model"
+                                ? " · 模型"
+                                : m.via === "fallback"
+                                  ? " · 本机兜底"
+                                  : ""}
+                          </b>
+                          <span>{m.text}</span>
+                          {showLog && m.kind === "listening" && zhihuSource(m.publicUrl) && (
+                            <a
+                              href={zhihuSource(m.publicUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              知乎原帖 ↗
+                            </a>
+                          )}
+                          {showLog && m.quoteRef && (
+                            <Evidence quote={m.quoteRef} onLocate={locateQuote(m.quoteRef)} />
+                          )}
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
               )}
             </>
           )}
-          {article && room && !personal && (started || readerLed) && (
+          {memorySlip}
+          {!publicTopic && inputs && publicDesk}
+          {inputs && cabinExtras}
+          {!publicTopic && article && room && !personal && (started || readerLed) && (
             <details className="context-details">
               <summary>本轮阅读与原帖 · {room.context.length}</summary>
               {readerLed && room.bookmark && !pinnedEvidence && (
@@ -256,7 +334,7 @@ export function CabinModal({
               </button>
             </details>
           )}
-          {article && cardOpen && room && cardAvailable && (
+          {!publicTopic && article && cardOpen && room && cardAvailable && (
             <div ref={cardRef}>
               <ControlCard
                 room={room}
@@ -312,11 +390,48 @@ export function CabinModal({
                     接过看山的掌控卡 <ArrowRight size={15} />
                   </button>
                 )}
-                {readerLed && (
+                {publicTopic ? (
                   <div className="reader-floor">
                     <i />
-                    {started ? "话头留给你，不着急回。" : "窗边有位置，随时开口。"}
+                    桌边旁听 · 只用这道题的公开材料
                   </div>
+                ) : chat?.model ? (
+                  <div className="reader-floor pet-test-floor">
+                    <span
+                      role="status"
+                      title={`本机测试 · ${chat.model}。只发本次同桌近几句；只有放上桌且这轮需要的选段才会一起发送。`}
+                    >
+                      <i /> 在线联调 ·{" "}
+                      {chat.busy
+                        ? "正在接话…"
+                        : chat.floor === "reader"
+                          ? "话头留给你，不急着回。"
+                          : chat.shared
+                            ? "选段已放好，按需共读"
+                            : "只发同桌近几句"}
+                    </span>
+                    {chat.floor === "offer" && !chat.busy && !draft.trim() && (
+                      <button type="button" className="paper-link" onClick={chat.onPass}>
+                        听另一位接话
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  readerLed && (
+                    <div className="reader-floor">
+                      <i />
+                      {chat?.checking
+                        ? "正在确认接话方式…"
+                        : started
+                          ? "话头留给你，不着急回。"
+                          : "窗边有位置，随时开口。"}
+                    </div>
+                  )
+                )}
+                {chat?.notice && (
+                  <p className="room-error" role="status">
+                    {chat.notice}
+                  </p>
                 )}
                 <form
                   className="chat-compose"
@@ -353,7 +468,7 @@ export function CabinModal({
                     aria-label="我也说一句"
                     placeholder={started ? "我也说一句…" : "从你想说的那句开始…"}
                   />
-                  <button disabled={!draft.trim()} aria-label="发送消息">
+                  <button disabled={!draft.trim() || chat?.checking} aria-label="发送消息">
                     <ArrowUp size={18} />
                   </button>
                 </form>

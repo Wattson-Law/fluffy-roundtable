@@ -38,7 +38,7 @@ export function clipPassage(item: Source, from: number, to: number): PassageBook
     url: item.url,
     title: item.title,
     author: item.author,
-    origin: item.origin,
+    ...(item.origin ? { origin: item.origin } : {}),
     start,
     excerpt,
     before: body.slice(a, start),

@@ -31,7 +31,15 @@ function Entrance({ settled }: { settled: boolean }) {
     </div>
   );
 }
-export function RoomScene({ line, settled }: { line?: Turn; settled: boolean }) {
+export function RoomScene({
+  line,
+  settled,
+  labelLocal,
+}: {
+  line?: Turn;
+  settled: boolean;
+  labelLocal?: boolean;
+}) {
   const reduced = useReducedMotion();
   const speaker = line?.speaker === "user" ? undefined : line?.speaker;
   const [shown, setShown] = useState(line);
@@ -77,7 +85,20 @@ export function RoomScene({ line, settled }: { line?: Turn; settled: boolean }) 
           </div>
           <div className="speech-paper" data-speaker={voice}>
             <strong>{names[voice]}</strong>
-            <small>{duties[voice]}</small>
+            <small>
+              {duties[voice]}
+              {caption.via === "model" ||
+              caption.via === "fallback" ||
+              (caption.via === "local" && labelLocal) ? (
+                <span className="voice-source">
+                  {caption.via === "model"
+                    ? "模型回复"
+                    : caption.via === "fallback"
+                      ? "本机兜底"
+                      : "本机回复"}
+                </span>
+              ) : null}
+            </small>
             <p>{caption.text}</p>
           </div>
         </div>

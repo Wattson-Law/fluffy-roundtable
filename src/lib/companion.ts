@@ -6,7 +6,24 @@ import type {
   Speaker,
 } from "@/types";
 
-import { readTurn, type TurnContext } from "./turn-intent.ts";
+import { endsWithWithdrawal, readTurn, type TurnContext } from "./turn-intent.ts";
+import {
+  asksReadingFact,
+  readingForRoom,
+  sameReading,
+  type TableReading,
+} from "./table-reading.ts";
+import { isPersonalRoomKey } from "./session-reading.ts";
+import type { ReaderThought } from "./reader-thoughts.ts";
+import {
+  asksToRemember,
+  captureStatement,
+  handleMemory,
+  memoryNote,
+  knownTopic,
+  sensitiveText,
+  type SharedMemory,
+} from "./shared-memory.ts";
 import { replyToTurn } from "./turn-reply.ts";
 export { selectComment } from "./reading-evidence.ts";
 
@@ -32,10 +49,13 @@ export type Turn = {
   speaker: Speaker | "user";
   text: string;
   at: number;
-  kind: "script" | "typed" | "choice" | "reply" | "note";
+  kind: "script" | "typed" | "choice" | "reply" | "note" | "memory" | "listening";
   quoteRef?: DialogueLine["quoteRef"];
+  via?: "model" | "local" | "fallback";
+  publicUrl?: string;
 };
 export type Room = {
+  memoryFocus?: string;
   conversation?: TurnContext;
   bookmark?: PassageBookmark;
   key: string;
@@ -53,7 +73,11 @@ export type Book = {
   version: 1;
   enabled: boolean;
   lastNudgeAt: number;
-  pending: { key: string; id: string; text?: string } | null;
+  thoughts?: ReaderThought[];
+  memories?: SharedMemory[];
+  mutedMemoryTopics?: string[];
+  memoryEpoch?: number;
+  pending: { key: string; id: string; text?: string; memoryId?: string } | null;
   threads: Room[];
 };
 export const emptyBook = (): Book => ({
@@ -76,7 +100,8 @@ export function startThread(
   now: number,
   bookmark?: PassageBookmark,
 ): Book {
-  if ((!context.length && key !== PERSONAL_ROOM) || b.threads.some((t) => t.key === key)) return b;
+  if ((!context.length && !isPersonalRoomKey(key)) || b.threads.some((t) => t.key === key))
+    return b;
   const item = context.at(-1);
   const others = b.threads
     .slice()
@@ -110,6 +135,7 @@ function append(
   text: string,
   at: number,
   quoteRef?: Turn["quoteRef"],
+  via?: Turn["via"],
 ): Room {
   const id =
     globalThis.crypto?.randomUUID?.() ??
@@ -117,8 +143,34 @@ function append(
   return {
     ...t,
     touched: at,
-    turns: [...t.turns, { id, speaker, kind, text, at, quoteRef }].slice(-MAX_TURNS),
+    turns: [...t.turns, { id, speaker, kind, text, at, quoteRef, ...(via ? { via } : {}) }].slice(
+      -MAX_TURNS,
+    ),
   };
+}
+/** Local public discussion is not reader testimony, a memory candidate or a model turn. */
+export function recordListeningTurn(
+  b: Book,
+  key: string,
+  speaker: Turn["speaker"],
+  text: string,
+  now: number,
+  publicUrl?: string,
+): Book {
+  return changeRoom(b, key, (r) => {
+    const next = append(
+      { ...r, conversation: { need: "ack" }, memoryFocus: undefined },
+      speaker,
+      "listening",
+      text,
+      now,
+      undefined,
+      "local",
+    );
+    if (publicUrl)
+      next.turns[next.turns.length - 1] = { ...next.turns[next.turns.length - 1], publicUrl };
+    return next;
+  });
 }
 export function nextLine(b: Book, key: string, now: number): Book {
   return changeRoom(b, key, (t) => {
@@ -139,6 +191,7 @@ export function setNotes(b: Book, enabled: boolean): Book {
     ...b,
     enabled,
     pending: enabled ? b.pending : null,
+    memories: enabled ? b.memories : b.memories?.map((m) => ({ ...m, offered: true })),
     threads: enabled
       ? b.threads
       : b.threads.map((t) => ({
@@ -151,8 +204,7 @@ const optOut =
   /(?:不想|不希望|不需要)(?:再)?(?:收到?|被)(?:主动)?(?:消息|提醒|打扰|联系|便签)|(?:别|不要|不用)(?:再)?主动(?:给我)?(?:发|来|联系)|(?:关掉|关闭)(?:主动)?便签|(别再|不要再|不想再|不用再|关闭|关掉|停止|取消|别|不要|不用)(?:主动)?(?:提醒|发消息|发便签|来信|打扰|找我|联系我)|免打扰/;
 const wantsSpace =
   /已经想明白了|已经决定了|不用继续了|问题解决了|不想聊|不聊了|想静静|先不聊|[想要]安静|想自己待|别问了|到这里|到这[里儿]?吧|晚安/;
-const privateSubject =
-  /身份证|住址|手机号|密码|密钥|转账|自杀|自残|抑郁|确诊|病历|诊断|性侵|银行卡|不想活|伤害自己|不想再活|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\d{7,}/i;
+const privateSubject = sensitiveText;
 const themes = [
   {
     re: /选[择项]|两条路|取舍|纠结|拿不定|比较|犹豫|还是先/,
@@ -180,29 +232,160 @@ const themes = [
   },
 ];
 const ordinaryNote = "上次聊到一半的小屋还开着。想接着说，我在听；想继续看书也好。";
-export function say(b: Book, key: string, raw: string, now: number): Book {
+type SpeechReply = Pick<Turn, "text" | "quoteRef"> & { speaker: Speaker };
+export type SpeechStart = { book: Book; anchor?: string; fallback?: SpeechReply };
+
+/** Store the reader first: an online response must still own this exact place at the table. */
+export function startSpeech(
+  b: Book,
+  key: string,
+  raw: string,
+  now: number,
+  online: boolean,
+  shared?: TableReading | null,
+): SpeechStart {
   const text = raw.trim().slice(0, 400);
-  if (!text || !b.threads.some((t) => t.key === key)) return b;
+  const room = b.threads.find((t) => t.key === key);
+  if (!text || !room) return { book: b };
+  const mute = optOut.test(text),
+    turn = readTurn(text, room.conversation);
   let next = b.pending?.key === key ? dismissNote(b) : b;
-  if (optOut.test(text)) next = setNotes(next, false);
-  return changeRoom(next, key, (t) => {
-    const turn = readTurn(text, t.conversation);
-    const reply = optOut.test(text)
-      ? {
-          speaker: "purr_cat" as const,
-          text: "好，我不再主动留便签了。你来敲窗时，我还在。",
-          quoteRef: undefined,
-        }
-      : replyToTurn(t, text, turn);
-    return append(
-      append({ ...t, conversation: turn.next }, "user", "typed", text, now),
-      reply.speaker,
-      "reply",
-      reply.text,
-      now,
-      reply.quoteRef,
+  const memoryControl = handleMemory(next, room, text, now);
+  if (memoryControl) {
+    const book = changeRoom(memoryControl.book, key, (r) =>
+      append(
+        append(
+          { ...r, conversation: { need: "ack" }, memoryFocus: memoryControl.focus },
+          "user",
+          "memory",
+          text,
+          now,
+        ),
+        turn.named ?? "purr_cat",
+        "reply",
+        memoryControl.text,
+        now,
+        undefined,
+        "local",
+      ),
     );
+    return { book };
+  }
+  if (asksToRemember(text)) {
+    const started = changeRoom(next, key, (r) =>
+      append({ ...r, conversation: { need: "ack" } }, "user", "typed", text, now),
+    );
+    const user = started.threads.find((r) => r.key === key)!.turns.at(-1)!;
+    const recorded = captureStatement(started, text, user.id, now);
+    const m = recorded.memories?.find((m) => m.sourceTurn === user.id);
+    return {
+      book: changeRoom(recorded, key, (r) =>
+        append(
+          { ...r, memoryFocus: m?.id ?? r.memoryFocus },
+          turn.named ?? "kanshan",
+          "reply",
+          m
+            ? `我把「${m.label}」记在本机了。`
+            : "没有新增小记。只记简短的本人近况，不记敏感内容，也不重复记。",
+          now,
+          undefined,
+          "local",
+        ),
+      ),
+    };
+  }
+  if (mute) next = setNotes(next, false);
+  const withdraw = endsWithWithdrawal(text);
+  const need = turn.next.need;
+  const fact = asksReadingFact(text, room.context.length > 0);
+  // A request to locate a source or a comment is an on-device lookup, even if phrased as a fact question.
+  const articleLookup =
+    need === "article" &&
+    (!fact ||
+      /出处|引用|证据|引文|(?:找|查|列出|摘|指出|核对).{0,10}(?:原文|原句)|(?:原文|原句).{0,30}(?:那句|哪一句)/.test(
+        text,
+      ));
+  const localSource =
+    (articleLookup || need === "comments") &&
+    (room.context.length > 0 ||
+      /原文|原句|这篇|文中|作者|出处|引文|精选评论|评论区.{0,4}(?:说|提到)/.test(text));
+  const recall = !mute && !withdraw && need !== "quiet" && !localSource && fact;
+  const preview = recall ? readingForRoom(room) : null;
+  const row = room.context.at(-1);
+  const fallback: SpeechReply = mute
+    ? {
+        speaker: "purr_cat",
+        text: "好，我不再主动留便签了。你来敲窗时，我还在。",
+      }
+    : withdraw
+      ? { speaker: turn.named ?? "kanshan", text: "好，接下来不再带这段原文和刚才的聊天。" }
+      : recall
+        ? {
+            speaker: turn.named ?? "owl",
+            text:
+              preview && row
+                ? "我把本机能核对的这段夹在下面。没写在这里的，我先不猜。"
+                : "我手边没有这篇能核对的原句，先不猜。",
+            ...(preview && row
+              ? {
+                  quoteRef: {
+                    excerpt: preview.excerpt,
+                    sourceTitle: row.title,
+                    sourceUrl: row.url,
+                    sourceTag: `READ_${room.context.length - 1}`,
+                    reason: "本机核对 · 当前选段",
+                  },
+                }
+              : {}),
+          }
+        : replyToTurn(room, text, turn);
+  const live =
+    online &&
+    !mute &&
+    !withdraw &&
+    need !== "quiet" &&
+    !localSource &&
+    (!recall || sameReading(shared, preview));
+  const book = changeRoom(next, key, (t) => {
+    const started = append(
+      { ...t, conversation: turn.next },
+      "user",
+      "typed",
+      text,
+      now,
+      undefined,
+      live ? "model" : undefined,
+    );
+    return live
+      ? started
+      : append(started, fallback.speaker, "reply", fallback.text, now, fallback.quoteRef, "local");
   });
+  const user = book.threads
+    .find((t) => t.key === key)!
+    .turns.findLast((t) => t.speaker === "user")!;
+  const recorded =
+    !mute && !withdraw && need !== "quiet" && !fact && !localSource
+      ? captureStatement(book, text, user.id, now)
+      : book;
+  if (!live) return { book: recorded };
+  return { book: recorded, anchor: user.id, fallback };
+}
+export function say(b: Book, key: string, raw: string, now: number): Book {
+  return startSpeech(b, key, raw, now, false).book;
+}
+export function settleSpeech(
+  b: Book,
+  key: string,
+  anchor: string,
+  reply: SpeechReply,
+  now: number,
+  via: "model" | "fallback",
+): Book {
+  return changeRoom(b, key, (t) =>
+    t.turns.at(-1)?.id !== anchor
+      ? t
+      : append(t, reply.speaker, "reply", reply.text, now, reply.quoteRef, via),
+  );
 }
 export function acceptChoice(
   b: Book,
@@ -222,7 +405,13 @@ export function acceptChoice(
 export function catCheckIn(
   b: Book,
   now: number,
-  env: { visible: boolean; busy: boolean; activeKey: string | null },
+  env: {
+    visible: boolean;
+    busy: boolean;
+    activeKey: string | null;
+    personalKey?: string;
+    resumeKey?: string | null;
+  },
 ): Book {
   if (
     !env.visible ||
@@ -237,6 +426,38 @@ export function catCheckIn(
     .map((t) => ({ t, user: t.turns.findLast((m) => m.speaker === "user") }))
     .filter((x) => x.user)
     .sort((a, z) => z.user!.at - a.user!.at)[0];
+  // Shared notes are independent of thread retention. Never infer a topic from a URL or reading history.
+  const lastHuman = latest?.user;
+  const closedForNow =
+    lastHuman &&
+    (latest.t.committed ||
+      latest.t.conversation?.need === "quiet" ||
+      lastHuman.kind !== "typed" ||
+      wantsSpace.test(lastHuman.text) ||
+      privateSubject.test(lastHuman.text) ||
+      now - (latest.t.turns.at(-1)?.at ?? now) < IDLE_MS);
+  const memory = (b.memories ?? []).find(
+    (m) =>
+      !m.offered &&
+      now - m.at >= IDLE_MS &&
+      !(b.mutedMemoryTopics ?? []).includes(m.topic) &&
+      (env.activeKey === null ||
+        b.threads
+          .find((r) => r.key === env.activeKey)
+          ?.turns.some((t) => t.speaker === "user" && t.id === m.sourceTurn)),
+  );
+  if (memory && !closedForNow) {
+    // Outside a room, entering the invite is not implicit permission to reopen yesterday's article.
+    const target = env.activeKey ?? env.personalKey ?? PERSONAL_ROOM;
+    const root = startThread(b, target, [], now);
+    const offered = {
+      ...root,
+      lastNudgeAt: now,
+      memories: root.memories?.map((m) => (m.id === memory.id ? { ...m, offered: true } : m)),
+      pending: { key: target, id: memory.sourceTurn, memoryId: memory.id },
+    };
+    return env.activeKey === target ? takeNote(offered, target, now) : offered;
+  }
   if (!latest) return b;
   const { t, user } = latest;
   const last = t.turns.at(-1)!;
@@ -245,7 +466,11 @@ export function catCheckIn(
     t.committed ||
     t.conversation?.need === "quiet" ||
     (t.bookmark && privateSubject.test(`${t.bookmark.title} ${t.bookmark.excerpt}`)) ||
+    (env.activeKey === null && env.resumeKey !== undefined && env.resumeKey !== t.key) ||
     user.kind !== "typed" ||
+    user.at <= (b.memoryEpoch ?? -1) ||
+    b.memories?.some((m) => m.sourceTurn === user.id) ||
+    (b.mutedMemoryTopics ?? []).includes(knownTopic(user.text) ?? "") ||
     (env.activeKey !== null && env.activeKey !== t.key) ||
     t.nudgedFor === user.id ||
     now - last.at < IDLE_MS ||
@@ -253,7 +478,12 @@ export function catCheckIn(
   )
     return b;
   const recent = t.turns
-    .filter((m) => m.kind === "typed")
+    .filter(
+      (m) =>
+        m.kind === "typed" &&
+        m.at > (b.memoryEpoch ?? -1) &&
+        !(b.mutedMemoryTopics ?? []).includes(knownTopic(m.text) ?? ""),
+    )
     .slice(-3)
     .reverse();
   if (
@@ -277,12 +507,30 @@ export function catCheckIn(
   return env.activeKey === t.key ? takeNote(offered, t.key, now) : offered;
 }
 /** Outside the cabin only an invitation exists. Older saves may already contain the actual note. */
-export function takeNote(b: Book, key: string, now: number): Book {
+export function takeNote(b: Book, key: string, now: number, destination = key): Book {
   const invite = b.pending;
   if (!invite || invite.key !== key) return b;
+  if (destination !== key && !isPersonalRoomKey(destination)) return b;
   const next = dismissNote(b);
+  if (invite.memoryId) {
+    const m = b.memories?.find((m) => m.id === invite.memoryId && m.sourceTurn === invite.id);
+    if (!m || b.mutedMemoryTopics?.includes(m.topic)) return next;
+    return changeRoom(startThread(next, destination, [], now), destination, (r) =>
+      append({ ...r, memoryFocus: m.id }, "purr_cat", "note", memoryNote(m, now), now),
+    );
+  }
+  if (destination !== key)
+    return changeRoom(startThread(next, destination, [], now), destination, (r) =>
+      append(
+        { ...r, conversation: { need: "ack" } },
+        "purr_cat",
+        "note",
+        "窗边给你留着位置。今天想聊什么都行。",
+        now,
+      ),
+    );
   return invite.text
-    ? changeRoom(next, key, (t) => append(t, "purr_cat", "note", invite.text!, now))
+    ? changeRoom(next, key, (r) => append(r, "purr_cat", "note", invite.text!, now))
     : next;
 }
 /** Keep the four project duties intact even when the model omits a speaker or drops a quote. */

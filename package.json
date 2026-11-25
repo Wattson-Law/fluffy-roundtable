@@ -9,9 +9,12 @@
     "start": "next start -p 3100",
     "typecheck": "tsc --noEmit",
     "test:companion:api": "node scripts/verify_companion_api.mjs",
-    "test:companion": "node --test scripts/companion.test.mjs scripts/intent.test.mjs scripts/trial.test.mjs",
+    "test:companion": "node --test scripts/companion.test.mjs scripts/intent.test.mjs scripts/trial.test.mjs scripts/pet-dialogue.test.mjs scripts/reading-pressure.test.mjs scripts/handoff-intent.test.mjs scripts/shared-memory.test.mjs scripts/listening-topics.test.mjs scripts/reader-thoughts.test.mjs scripts/session-reading.test.mjs",
     "pack:trial": "node scripts/pack_trial.mjs",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "dev:pets": "next dev --webpack --hostname 127.0.0.1 --port 3100",
+    "stress:pets": "node scripts/stress_pet_route.mjs",
+    "observe:pets": "node scripts/observe-pets.mjs"
   },
   "dependencies": {
     "framer-motion": "11.18.2",

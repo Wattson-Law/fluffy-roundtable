@@ -1,0 +1,73 @@
+.listening-guard {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.listening-desk {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-inline-start: 3px solid var(--leaf);
+  background: var(--pale);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.listening-desk header,
+.listening-topic,
+.listening-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+.listening-desk header strong {
+  font: 600 16px/1.4 var(--serif);
+}
+.listening-desk small,
+.listening-desk footer,
+.listening-notice {
+  color: var(--soft);
+  font-size: 12px;
+}
+.listening-topic b {
+  font: 600 15px/1.55 var(--serif);
+}
+.listening-topic a,
+.listening-desk footer button {
+  color: var(--forest);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.listening-notice {
+  margin: 0;
+}
+.listening-notice:empty {
+  display: none;
+}
+.listening-actions button,
+.listening-offer {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--sheet);
+  color: var(--forest);
+  font-size: 13px;
+}
+.listening-offer {
+  text-align: start;
+}
+.listening-offer small {
+  margin-inline-end: 4px;
+  color: var(--forest);
+}
+.listening-desk footer button {
+  margin-inline-start: 6px;
+}
+.listening-desk :is(button, a):focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 3px;
+}

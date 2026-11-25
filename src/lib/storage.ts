@@ -1,44 +1,86 @@
 "use client";
 import type { JournalEntry, ReadingTrailItem, ZhihuItem } from "@/types";
 import { isBookmark } from "./bookmarks.ts";
-import { PERSONAL_ROOM, type Book, type Room } from "./companion.ts";
+import type { Book, Room } from "./companion.ts";
+import { normalizeMemories } from "./shared-memory.ts";
+import { validateReaderThoughts } from "./reader-thoughts.ts";
+import {
+  clearSession,
+  freshSession,
+  isOpaqueId,
+  isPersonalRoomKey,
+  loadSession,
+  opaqueId,
+  recordGrant,
+  saveSession,
+  scopedRoomKey,
+  sessionInMemory,
+  type ReadingSession,
+} from "./session-reading.ts";
+export { isPersonalRoomKey } from "./session-reading.ts";
 
 const LEGACY = "fr.readingTrail",
   HISTORY = "fr.readingHistory.v1",
   BOOK = "fr.companion.v1",
-  JOURNAL = "fr.journalCats";
+  JOURNAL = "fr.journalCats",
+  EPOCH = "fr.readingEpoch.v1";
 export const STORE_EVENT = "fluffy-library-change";
-export const STORAGE_KEYS = [HISTORY, BOOK, JOURNAL, LEGACY];
-const transient = new Map<string, string>();
+export const STORAGE_KEYS = [HISTORY, BOOK, JOURNAL, LEGACY, EPOCH];
+// Quota/security failures may only shadow this document. A clear in a different tab
+// retires its shadow too, even if the page was suspended and missed the storage event.
+const documents = new WeakMap<Window, { epoch?: string | null; values: Map<string, string> }>();
+function shadow() {
+  let state = documents.get(window);
+  if (!state) {
+    state = { values: new Map() };
+    documents.set(window, state);
+  }
+  try {
+    const epoch = window.localStorage.getItem(EPOCH);
+    if (state.epoch !== epoch) state.values.clear();
+    state.epoch = epoch;
+  } catch {
+    /* Without access, only this document's own writes are available. */
+  }
+  return state;
+}
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
-  let raw = transient.get(key);
-  if (raw === undefined) {
-    try {
-      raw = window.localStorage.getItem(key) ?? undefined;
-    } catch {
-      /* memory-only */
-    }
-  }
-  if (raw === undefined) return fallback;
   try {
-    return JSON.parse(raw) as T;
+    const raw = shadow().values.get(key) ?? window.localStorage.getItem(key);
+    return raw == null ? fallback : (JSON.parse(raw) as T);
   } catch {
     return fallback;
   }
 }
-function write(key: string, value: unknown) {
+function write(key: string, value: unknown, revoke = false) {
   if (typeof window === "undefined") return;
-  const raw = JSON.stringify(value);
+  const state = shadow(),
+    raw = JSON.stringify(value);
   try {
     window.localStorage.setItem(key, raw);
-    transient.delete(key);
+    if (key === EPOCH) state.epoch = raw;
+    state.values.delete(key);
   } catch {
-    transient.set(key, raw);
+    // A full store often permits deletion. Never leave yesterday's data accessible to
+    // another tab just because writing the (much smaller) reset value failed.
+    if (revoke) {
+      try {
+        window.localStorage.removeItem(key);
+        if (key === EPOCH) state.epoch = null;
+        window.localStorage.setItem(key, raw);
+        if (key === EPOCH) state.epoch = raw;
+        state.values.delete(key);
+        return;
+      } catch {
+        /* fully blocked: retain only the document-local reset */
+      }
+    }
+    state.values.set(key, raw);
   }
 }
 export function memoryOnly() {
-  return transient.size > 0;
+  return typeof window !== "undefined" && (shadow().values.size > 0 || sessionInMemory());
 }
 function notify() {
   if (typeof window !== "undefined") window.dispatchEvent?.(new Event(STORE_EVENT));
@@ -56,18 +98,89 @@ function validTrail(v: unknown): v is ReadingTrailItem {
     Number.isFinite(t.readAt)
   );
 }
-export function getHistory(): ReadingTrailItem[] {
-  // Existing installs keep their five entries until their first new read; an explicit [] is never re-imported.
-  const saved = read<unknown>(HISTORY, null) ?? read<unknown>(LEGACY, []);
+// The library holds the article once. A read grant names the actual version seen,
+// not its URL, history position, a timestamp shared by two tabs, or its visit count.
+type SavedRow = ReadingTrailItem & { readRef?: string };
+function historyRows(allowLegacy = true): SavedRow[] {
+  const saved = read<unknown>(HISTORY, null) ?? (allowLegacy ? read<unknown>(LEGACY, []) : []);
   return Array.isArray(saved) ? saved.filter(validTrail).slice(-100) : [];
 }
-export const getTrail = () => {
-  const h = getHistory();
-  return h.filter((t) => t.origin === h.at(-1)?.origin).slice(-5);
-};
+function publicRow({ readRef: _ref, ...row }: SavedRow): ReadingTrailItem {
+  return row;
+}
+export const getHistory = () => historyRows().map(publicRow);
+function epoch() {
+  const value = read<unknown>(EPOCH, null);
+  return isOpaqueId(value) ? value : null;
+}
+function currentSession() {
+  return loadSession(epoch());
+}
+function ensureSession(): ReadingSession {
+  const current = epoch(),
+    active = loadSession(current);
+  if (active) return active;
+  const session = freshSession(current ?? opaqueId());
+  if (!current) write(EPOCH, session.epoch);
+  saveSession(session);
+  return session;
+}
+/** For new personal, article and passage rooms. Only an explicit chat resume uses its stored key. */
+export const sessionRoomKey = (materialKey?: string) =>
+  scopedRoomKey(ensureSession().scope, materialKey);
+// Explicit projection: extra shelf fields (including lifetime visits) aren't table material.
+type Material = Omit<ReadingTrailItem, "readAt" | "visits">;
+function material({
+  origin,
+  id,
+  url,
+  title,
+  author,
+  authoritylevel,
+  voteUpCount,
+  comments,
+  contentText,
+  fromQuestion,
+}: Material): Material {
+  return {
+    origin,
+    id,
+    url,
+    title,
+    author,
+    authoritylevel,
+    voteUpCount,
+    comments,
+    contentText,
+    fromQuestion,
+  };
+}
+function resolveTrail(session: ReadingSession, rows: SavedRow[]) {
+  const origin = session.grants.at(-1)?.sample;
+  return session.grants
+    .filter((g) => g.sample === origin)
+    .slice(-5)
+    .flatMap((g) => {
+      const matches = rows.filter(
+        (r) => r.readRef === g.ref && (r.origin === "sample") === g.sample,
+      );
+      return matches.length === 1
+        ? [{ ...material(matches[0]), readAt: g.readAt, visits: g.visits }]
+        : [];
+    });
+}
+export function getTrail(): ReadingTrailItem[] {
+  const session = currentSession();
+  return session?.grants.length ? resolveTrail(session, historyRows(false)) : [];
+}
 export function pushTrail(item: ZhihuItem, fromQuestion?: string): ReadingTrailItem[] {
-  const history = getHistory(),
-    old = history.find((t) => t.url === item.url);
+  if (
+    typeof window === "undefined" ||
+    typeof item?.contentText !== "string" ||
+    !Array.isArray(item.comments) ||
+    !item.comments.every((s) => typeof s === "string")
+  )
+    return getTrail();
   const row: ReadingTrailItem = {
     origin: item.origin,
     id: item.id,
@@ -80,18 +193,46 @@ export function pushTrail(item: ZhihuItem, fromQuestion?: string): ReadingTrailI
     contentText: item.contentText.slice(0, 1500),
     fromQuestion,
     readAt: Date.now(),
-    visits: old ? (old.visits ?? 1) + 1 : 1,
   };
-  if (!validTrail(row)) return history.slice(-5);
-  const next = [...history.filter((t) => t.url !== row.url), row].slice(-100);
+  if (!validTrail(row)) return getTrail();
+  const session = ensureSession(),
+    history = historyRows(),
+    old = history.find((t) => t.url === row.url);
+  const ref =
+    old &&
+    isOpaqueId(old.readRef) &&
+    JSON.stringify(material(old)) === JSON.stringify(material(row))
+      ? old.readRef
+      : opaqueId();
+  const stored = { ...row, visits: (old ? (old.visits ?? 1) : 0) + 1, readRef: ref };
+  const next = [...history.filter((t) => t.url !== row.url), stored].slice(-100);
+  const active = recordGrant(
+    session,
+    {
+      ref,
+      sample: row.origin === "sample",
+      readAt: row.readAt,
+      visits: (session.grants.find((g) => g.ref === old?.readRef)?.visits ?? 0) + 1,
+    },
+    old?.readRef,
+  );
   write(HISTORY, next);
-  write(LEGACY, next.filter((t) => !t.origin).slice(-5));
+  write(
+    LEGACY,
+    next
+      .filter((t) => !t.origin)
+      .slice(-5)
+      .map(publicRow),
+  );
+  saveSession(active);
   notify();
-  return next.filter((t) => t.origin === row.origin).slice(-5);
+  return resolveTrail(active, next);
 }
 export function clearTrail() {
-  write(HISTORY, []);
-  write(LEGACY, []);
+  write(EPOCH, opaqueId(), true); // revoke other tabs' grants, room keys and seats even after repopulation
+  clearSession();
+  write(HISTORY, [], true);
+  write(LEGACY, [], true);
   notify();
 }
 const defaultBook = (): Book => ({
@@ -101,6 +242,20 @@ const defaultBook = (): Book => ({
   pending: null,
   threads: [],
 });
+// A delayed fold can hand back a React snapshot from before another tab cleared the
+// library. Only a room issued by this document in the same generation may set a seat.
+const issued = new WeakMap<Room, { document: Window; epoch: string | null; lastRead?: string }>();
+function issue(book: Book): Book {
+  if (typeof window !== "undefined" && book.threads.length) {
+    const witness = {
+      document: window,
+      epoch: epoch(),
+      lastRead: currentSession()?.grants.at(-1)?.ref,
+    };
+    for (const room of book.threads) issued.set(room, witness);
+  }
+  return book;
+}
 export function getBook(): Book {
   const b = read<Book | null>(BOOK, null);
   if (b?.version !== 1 || !Array.isArray(b.threads)) return defaultBook();
@@ -110,65 +265,85 @@ export function getBook(): Book {
         !!t &&
         typeof t.key === "string" &&
         Array.isArray(t.context) &&
-        (t.context.length > 0 || t.key === PERSONAL_ROOM) &&
+        (t.context.length > 0 || isPersonalRoomKey(t.key)) &&
         t.context.every(validTrail) &&
         Array.isArray(t.turns) &&
         Number.isInteger(t.cursor),
     )
     .map((t) => (t.bookmark && !isBookmark(t.bookmark) ? { ...t, bookmark: undefined } : t));
-  return {
+  const memories = normalizeMemories(b.memories),
+    p = b.pending;
+  const room = p && threads.find((t) => t.key === p.key);
+  return issue({
     ...defaultBook(),
     ...b,
+    ...(b.memories !== undefined ? { memories } : {}),
+    ...("thoughts" in b ? { thoughts: validateReaderThoughts(b.thoughts) } : {}),
     threads,
     pending:
-      b.pending &&
-      threads.some((t) => t.key === b.pending?.key && t.turns.some((m) => m.id === b.pending?.id))
-        ? b.pending
+      room &&
+      p &&
+      typeof p.id === "string" &&
+      (memories.some((m) => m.id === p.memoryId) || room.turns.some((m) => m?.id === p.id))
+        ? p
         : null,
-  };
+  });
 }
 export function updateBook(edit: (b: Book) => Book): Book {
   const old = getBook(),
     next = edit(old);
   if (next !== old) {
     write(BOOK, next);
+    issue(next);
     notify();
   }
   return next;
 }
-// A tab-local return address, not a second copy of the conversation or its article.
-const SEAT = "fr.windowSeat.v1";
-let inPageSeat: string | null = null;
+// Unlike a turn ID, this handle also works for an unspoken clip, survives turn
+// pruning, and never writes a passage-bearing bookmark key to sessionStorage.
+type SavedRoom = Room & { seatRef?: string };
 export function rememberSeat(room?: Room) {
-  const id = room?.turns.at(-1)?.id;
-  inPageSeat = id ? JSON.stringify({ id, readAt: getHistory().at(-1)?.readAt ?? 0 }) : null;
-  try {
-    if (inPageSeat) window.sessionStorage.setItem(SEAT, inPageSeat);
-    else window.sessionStorage.removeItem(SEAT);
-  } catch {
-    /* Blocked session storage: still works until this document is closed. */
+  if (room) {
+    const witness = issued.get(room);
+    if (
+      !witness ||
+      witness.document !== window ||
+      witness.epoch !== epoch() ||
+      witness.lastRead !== currentSession()?.grants.at(-1)?.ref
+    )
+      return;
   }
+  const session = room ? ensureSession() : currentSession();
+  if (!session) return;
+  let seat: string | undefined;
+  if (room)
+    updateBook((b) => {
+      const saved: SavedRoom | undefined = b.threads.find((t) => t.key === room.key);
+      if (!saved) return b;
+      seat = isOpaqueId(saved.seatRef) ? saved.seatRef : opaqueId();
+      return saved.seatRef === seat
+        ? b
+        : { ...b, threads: b.threads.map((t) => (t === saved ? { ...t, seatRef: seat } : t)) };
+    });
+  saveSession({ ...session, seat });
 }
 export function seatedRoom(): string | undefined {
-  let saved = inPageSeat;
-  try {
-    saved ??= window.sessionStorage.getItem(SEAT);
-  } catch {
-    /* memory only */
-  }
-  if (!saved) return;
-  try {
-    const seat = JSON.parse(saved);
-    if (typeof seat?.id !== "string" || seat.readAt !== (getHistory().at(-1)?.readAt ?? 0)) return;
-    return getBook().threads.find((t) => t.turns.some((m) => m.id === seat.id))?.key;
-  } catch {
-    return;
-  }
+  const s = currentSession();
+  if (!s?.seat) return;
+  const last = s.grants.at(-1);
+  if (last && historyRows(false).filter((r) => r.readRef === last.ref).length !== 1) return;
+  const matches = getBook().threads.filter((r: SavedRoom) => r.seatRef === s.seat);
+  return matches.length === 1 ? matches[0].key : undefined;
 }
 export function clearCompanion() {
-  rememberSeat();
   const b = getBook();
-  write(BOOK, { ...defaultBook(), enabled: b.enabled });
+  // In-flight model replies in other tabs compare this value, including legacy `undefined`.
+  const previous = Number.isSafeInteger(b.memoryEpoch) ? (b.memoryEpoch ?? 0) : 0;
+  write(
+    BOOK,
+    { ...defaultBook(), enabled: b.enabled, memoryEpoch: Math.max(Date.now(), previous + 1) },
+    true,
+  );
   clearTrail();
 }
 export function getJournal(): JournalEntry[] {

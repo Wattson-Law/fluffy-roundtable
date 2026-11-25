@@ -53,6 +53,9 @@ const proc = spawn(
     env: {
       ...process.env,
       ZHIHU_ACCESS_SECRET: "",
+      PET_CHAT_TEST: "1",
+      PET_CHAT_MODEL: "fixture",
+      QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY: "fixture-only",
       LLM_BASE_URL: `http://127.0.0.1:${modelPort}`,
       LLM_MODEL: "local-fixture",
       LLM_API_KEY: "local-test-only",
@@ -92,6 +95,23 @@ try {
     await sleep(200);
   }
   assert.ok(ready, "production app did not start");
+  // Even setting the individual plan configuration must not enable a public production chat.
+  const chatUrl = `${base}/api/roundtable/chat`;
+  assert.deepEqual(await (await fetch(chatUrl)).json(), { enabled: false });
+  assert.equal(
+    (await post("chat", { mode: "reader", turns: [{ speaker: "user", text: "虚构测试" }] })).status,
+    503,
+  );
+  assert.equal(
+    (
+      await fetch(chatUrl, {
+        method: "POST",
+        headers: { origin: "https://example.org", "content-type": "application/json" },
+        body: "{}",
+      })
+    ).status,
+    403,
+  );
   assert.equal((await post("analyze", { trail: [] })).status, 400);
   assert.equal(
     (

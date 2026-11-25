@@ -73,6 +73,8 @@ def trial(browser, base, mobile=False, shots=None):
         reduced_motion="reduce",
         has_touch=mobile,
     )
+    ctx.route("**/api/roundtable/chat", lambda r: r.fulfill(json={"enabled": False}))
+    ctx.route("**/api/zhihu/**", lambda r: r.fulfill(json={"items": [], "degraded": True, "live": False}))
     p = ctx.new_page()
     errors = []
     posts = []

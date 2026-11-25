@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { catCheckIn } from "@/lib/companion";
-import { updateBook } from "@/lib/storage";
+import { catCheckIn, IDLE_MS } from "@/lib/companion";
+import { updateBook, sessionRoomKey, seatedRoom } from "@/lib/storage";
 
 /** A visible page delivers local notes, never asks for notifications or transmits chat. */
 export function useCatDelivery(flags: { activeKey: string | null; busy: boolean }) {
@@ -10,10 +10,10 @@ export function useCatDelivery(flags: { activeKey: string | null; busy: boolean 
     latest.current = flags;
   }, [flags]);
   useEffect(() => {
-    let quietUntil = Date.now() + 15_000,
+    let quietUntil = Date.now() + IDLE_MS,
       alive = true;
     const activity = () => {
-      quietUntil = Date.now() + 15_000;
+      quietUntil = Date.now() + IDLE_MS;
     };
     let composing: EventTarget | null = null;
     const compositionStart = (event: Event) => {
@@ -34,6 +34,8 @@ export function useCatDelivery(flags: { activeKey: string | null; busy: boolean 
         visible: true,
         busy: latest.current.busy || typing || window.getSelection()?.isCollapsed === false,
         activeKey: latest.current.activeKey,
+        personalKey: sessionRoomKey(),
+        resumeKey: seatedRoom() ?? null,
       };
       if (!env.busy) updateBook((b) => catCheckIn(b, Date.now(), env));
     };

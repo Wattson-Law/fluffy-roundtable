@@ -2,7 +2,7 @@
 
 **状态：试用入口可用；本仓库尚未收到真人反馈。** 这次只想知道一件事：第一次来的人用自己的话改了口，伙伴的下一句有没有跟着变？不评打字速度、聊天轮数，也不测试跨月记忆。
 
-[下载离线试用包（ZIP）](https://github.com/Wattson-Law/fluffy-roundtable/raw/refs/heads/main/docs/reader-trial/window-seat.zip) · [查看文件](window-seat.zip) · [产品总设计稿](../superpowers/specs/2026-11-24-intent-first-cabin-design.md#6-先验对话再扩功能)
+[下载离线试用包（ZIP）](window-seat.zip?raw=true) · [查看文件](window-seat.zip) · [产品总设计稿](../superpowers/specs/2026-11-24-intent-first-cabin-design.md#6-先验对话再扩功能)
 
 ![窗边试聊欢迎页的实机截图：刘看山搁下笔，窗边留了一个位置。](welcome.png)
 

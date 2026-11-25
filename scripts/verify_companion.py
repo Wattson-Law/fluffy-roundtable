@@ -8,6 +8,16 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
 
+def local_chat_only(ctx, errors):
+    # This suite is offline even when pointed at a developer's model-enabled preview.
+    def guard(route):
+        if route.request.method == "GET":
+            return route.fulfill(json={"enabled": False})
+        errors.append("unexpected online chat request in offline regression")
+        return route.fulfill(status=503, json={"error": "offline"})
+    ctx.route("**/api/roundtable/chat", guard)
+
+
 def boot(browser, base, width, height, reduced=True):
     ctx = browser.new_context(
         viewport={"width": width, "height": height},
@@ -19,6 +29,7 @@ def boot(browser, base, width, height, reduced=True):
     ctx.route("**/api/zhihu/hot?*", lambda r: r.fulfill(json={"items": [], "degraded": True}))
     ctx.route("**/api/zhihu/quota", lambda r: r.fulfill(json={"live": False, "items": []}))
     bad = []
+    local_chat_only(ctx, bad)
     posts = []
     ctx.on("request", lambda r: posts.append(r.url) if r.method == "POST" else None)
     page = ctx.new_page()
@@ -122,6 +133,8 @@ def desktop(browser, base, shots):
     entry.fill("")
     btn(p, "关闭小屋").click()
     p.clock.fast_forward(20000)
+    expect(p.locator(".cat-note")).to_have_count(0)  # Closing/typing is recent activity.
+    p.clock.fast_forward(300000)
     expect(p.locator(".cat-note p")).to_have_text("有空聊两句吗？")
     assert len(notes(p)) == 0
     shot(p, shots, "04-猫猫主动便签")
@@ -217,6 +230,7 @@ def live_shape(browser, base):
     p = ctx.new_page()
     events = []
     errors = []
+    local_chat_only(ctx, errors)
     p.on("pageerror", lambda e: errors.append(str(e)))
     question = "联调：怎么给一本书写笔记？"
     rows = [

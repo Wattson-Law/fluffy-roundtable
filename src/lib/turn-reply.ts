@@ -1,5 +1,6 @@
 import type { Speaker, QuoteRef } from "@/types";
 import type { Room } from "./companion";
+import { correctedConcern } from "./turn-intent.ts";
 import type { ReadingOfTurn, TurnContext } from "./turn-intent";
 import { selectComment } from "./reading-evidence.ts";
 
@@ -143,8 +144,14 @@ export function replyToTurn(room: Room, text: string, turn: ReadingOfTurn): Repl
           ? "嗯，你是想试试的。想到真要迈出那一步，哪件事最让你心里打鼓？"
           : "嗯，听起来有点让人发怵。哪一刻最让你紧张？",
       );
-    case "obstacle":
-      return line(offers[barrier ?? "other"]);
+    case "obstacle": {
+      const concern = correctedConcern(text);
+      return line(
+        concern && barrier === "other"
+          ? `原来你在意的是「${concern}」。我听清了。`
+          : offers[barrier ?? "other"],
+      );
+    }
     case "encourage": {
       const optional =
         barrier === "ride"

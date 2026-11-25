@@ -49,12 +49,73 @@ const yes =
   /(?:我(?:还是|其实|真的|已经|挺|很|也|就是)?|决定|是)想(?:去|做|试|学|报名|应聘|参加|换)|我愿意|决定(?:去|试|参加)|不是不想去/;
 const no = /(?:不想|不愿意|决定不)(?:去|做|试|学|报名|参加)|不去了/;
 const undecided = /还没(?:想好|选好|决定)|拿不定|犹豫|不知道要不要/;
-const switchTopic = /换(?:个|件|一个|一件)?(?:话题|事)|说点别的|另外一件事|不说这个了|说回文章/;
+// Natural-language controls use the same sharing boundary as the button. A negated switch keeps the current table.
+const clauses = (text: string) =>
+  text
+    .split(/[，,。！？!?；;\n]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+function affirmative(part: string, action: RegExp): boolean {
+  return Array.from(part.matchAll(action)).some(
+    (m) => !/(?:别|不(?:想|要|用|必|打算|是))(?:急着|再|先)?$/.test(part.slice(0, m.index)),
+  );
+}
+function withdrawClause(part: string): boolean {
+  return (
+    /(?:别|不要|不用)(?:再)?(?:带(?:上)?(?:文章|原文|这段)|(?:把|将)?(?:文章|原文|原句|这段)(?:文字|原文)?(?:再)?(?:发|给|带|分享|交给))|(?:文章|原文|原句|这段)(?:先)?(?:别|不要|不用)(?:再)?(?:发|分享|带)/.test(
+      part,
+    ) || affirmative(part, /(?:撤下|撤回|拿掉)(?:这段|原句|原文)/g)
+  );
+}
+export const endsWithWithdrawal = (text: string) => withdrawClause(clauses(text).at(-1) ?? "");
+export function leavesReading(text: string): boolean {
+  return clauses(text).some(
+    (part) =>
+      withdrawClause(part) ||
+      /(?:别|不(?:想)?)(?:再)?(?:谈|聊|说)(?:这[篇段个]|文章)|(?:这[篇段个](?:文章|话题)?|文章)(?:先|暂时|就)?不(?:再)?(?:谈|聊|说)/.test(
+        part,
+      ) ||
+      affirmative(
+        part,
+        /换(?:一个|一件|个|件)?(?:话题|话茬|事)|(?:说说|聊聊|谈谈|说|聊|谈)(?:点|些|一点)?别的|另外一件事/g,
+      ),
+  );
+}
 const correction = /(?:^|[，,。；;])\s*(?:不是|不对|我不怕|别猜)/;
+/** Only the affirmative half of a reader's explicit correction, never an animal's guess. */
+const namedFear =
+  /^(?:其实|是|我|真(?:正)?|主要|更|只是|有点|最)*(?:害怕|怕|担心|顾虑的是)(.{2,45})$/;
+function correctionParts(text: string) {
+  return text
+    .split(/[，,。！!？?；;]|而是/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+export function correctedConcern(text: string): string | undefined {
+  if (!correction.test(text)) return;
+  for (const clause of correctionParts(text).slice(1).reverse()) {
+    const detail = clause.match(namedFear)?.[1];
+    if (detail && !/不是|别猜|不怕|其实不/.test(detail)) return detail;
+  }
+}
+/** Project just an unambiguous correction. Extra requests and the on-device transcript stay intact. */
+export function affirmedCorrectionClause(text: string): string | undefined {
+  const parts = correctionParts(text);
+  if (/^(?:猫猫|呼噜猫|猫头鹰|考据猫头鹰|狗狗|柴犬|看山|刘看山)$/.test(parts[0] ?? ""))
+    parts.shift();
+  if (
+    parts.length !== 2 ||
+    !correction.test(parts[0]) ||
+    !namedFear.test(parts[1]) ||
+    !correctedConcern(text)
+  )
+    return;
+  return parts[1];
+}
 const cues: [Need, RegExp][] = [
   [
     "listen",
-    /听我(?:说|讲|吐槽)|只想被听见|只(?:是)?想(?:说说|聊聊|吐槽|有人听)|陪我坐|不用给建议|别给建议|不想要建议|别问了/,
+    /听我(?:说|讲|吐槽)|只想被听见|只(?:是)?想(?:说说|聊聊|吐槽|有人听)|陪我坐|不用给建议|别给建议|不想要建议|别问了|别(?:再)?(?:教我|给我出主意|替我想办法)/,
   ],
   [
     "encourage",
@@ -66,16 +127,19 @@ const cues: [Need, RegExp][] = [
   ],
   ["rehearse", /陪我练|练(?:一练|一下|一句)|演练/],
   ["weigh", /分析|利弊|权衡|帮我(?:比较|理一理|捋)/],
-  ["summary", /收[个一下]*尾|总结|掌控卡|理一下刚才/],
+  [
+    "summary",
+    /收[个一下]*尾|总结|掌控卡|理一下刚才|把(?:我们|咱们)?(?:刚才|刚刚|前面说的|这桌聊的).{0,20}(?:留(?:下)?一句|收成一句)/,
+  ],
   ["comments", /评论|反方|其他人的?(?:声音|经验)|避坑|同路人/],
   [
     "article",
-    /原文|证据|出处|引用|来源|核查|作者.{0,6}(?:说|指)|指(?:的是|什么)|什么意思|怎么理解|怎么解释|这句话/,
+    /原文|证据|出处|引用|来源|核查|核对(?:.{0,12}(?:一句|那句|原句|数字|时间|说法|人名)|带[「“])|作者.{0,6}(?:说|指)|指(?:的是|什么)|什么意思|怎么理解|怎么解释|这句话/,
   ],
 ];
 const negated =
   /(?:别(?:再|光|只)?|不(?:必|想|要|用|需要|是)(?:再|光|只)?|停止)(?:你们?|帮我|给我|替我|告诉我|跟我|我该|该|听|看|讲|说|只|继续|再|一味|急着|一直|做|分析|什么|让我)*(?:一点|点|个)?$/;
-function explicitNeed(parts: string[]): Need | undefined {
+export function explicitNeed(parts: readonly string[]): Need | undefined {
   let chosen: Need | undefined;
   for (const piece of parts) {
     let at = -1,
@@ -125,7 +189,11 @@ export function readTurn(text: string, previous?: TurnContext): ReadingOfTurn {
   const newProject =
     /我(?:最近|又|还|现在)?想(?:学|报名|参加|应聘|换)(?!不)[^，,。！？?；;]{2,}/.test(text);
   const fresh =
-    switchTopic.test(text) || aboutSomeoneElse || newProject || previous?.need === "quiet";
+    leavesReading(text) ||
+    /说回文章/.test(text) ||
+    aboutSomeoneElse ||
+    newProject ||
+    previous?.need === "quiet";
   const prior = fresh ? undefined : previous;
   let willing = prior?.willing;
   for (const p of parts) {
@@ -137,10 +205,16 @@ export function readTurn(text: string, previous?: TurnContext): ReadingOfTurn {
   const term = text.match(/[‘“「『《]([^’”」』》]{1,60})[’”」』》]/)?.[1];
   const named = voices[text.match(vocative)?.[1] ?? ""];
   let need = explicitNeed(parts);
-  if (stop.test(parts.at(-1) ?? "")) need = "quiet";
+  const lastClause = parts.at(-1) ?? "";
+  const continuingElsewhere =
+    parts.slice(0, -1).some((p) => stop.test(p) && leavesReading(p)) &&
+    /(?:想|继续|可以|来)(?:聊|说|谈|问)|聊聊|说说|谈谈/.test(lastClause);
+  if (stop.test(lastClause)) need = "quiet";
   const uncertain = unsure.test(text) && !undecided.test(text);
   const corrected = correction.test(text);
-  const specified = aboutSomeoneElse ? undefined : barrierIn(parts);
+  const specified = aboutSomeoneElse
+    ? undefined
+    : (barrierIn(parts) ?? (correctedConcern(text) ? "other" : undefined));
   let barrier = specified ?? (corrected ? undefined : prior?.barrier);
   let askedWhy = !corrected && !!prior?.askedWhy;
   if (!need) {
@@ -148,7 +222,7 @@ export function readTurn(text: string, previous?: TurnContext): ReadingOfTurn {
       /^(?:嗯嗯|嗯|好啊|好呀|好的|行啊|可以|好|行|那就试试|试试)[啊呀吧了\s，,。！!]*(?:试试|来吧|试一下)?[。！!]?$/u.test(
         text,
       );
-    if (stop.test(text)) need = "quiet";
+    if (stop.test(text) && !continuingElsewhere) need = "quiet";
     else if (aboutSomeoneElse) need = "ack";
     else if (accept && prior?.need === "obstacle" && prior.barrier === "asking") need = "rehearse";
     else if (
