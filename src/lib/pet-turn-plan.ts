@@ -55,10 +55,10 @@ export type PetTurnPlan = ReturnType<typeof planPetTurn>;
 function asksToUsePassage(text: string): boolean {
   let use = false;
   const cue =
-    /(?:引用|借用|用|借|照着|根据|结合|围绕)(?:一下|刚才的|桌上的)?(?:[这那](?:段|篇|句)(?:话|文字|原文|原句)?|原文|原句|选段)/g;
+    /(?:引用|借用|用|借|照着|根据|结合|围绕|聊聊?|讨论|解释|分析|说说|看看)(?:一下|刚才的|桌上的)?(?:[这那](?:段|篇|句)(?:话|文字|原文|原句)?|原文|原句|选段)/g;
   // Require a request to the pet, not “我昨天用这段原文做了张卡”. If it is ambiguous, omit it.
   const request =
-    /^(?:(?:猫猫|呼噜猫|猫头鹰|柴犬|狗狗|看山|刘看山)\s*)?(?:我想请|我想让|希望|麻烦|可不可以|可以|能不能|能否|能|请|你们|你|帮我|试着|还是|就|再|先|也|直接|\s)*$/;
+    /^(?:(?:猫猫|呼噜猫|猫头鹰|柴犬|狗狗|看山|刘看山)\s*)?(?:我想请|我想让|我想|想|还想|我们|一起|继续|希望|麻烦|可不可以|可以|能不能|能否|能|请|你们|你|帮我|试着|还是|就|再|先|也|直接|\s)*$/;
   for (const clause of text.split(/[，,。！？!?；;\n]|但是|不过|而是/)) {
     const part = clause.trim();
     if (/算了|只想(?:吐槽|有人听|被听见)|先不看|不用原文/.test(part)) use = false;
@@ -81,9 +81,10 @@ export function materialForTurn(p: PetPacket, plan = planPetTurn(p)): PetPacket 
     }
   });
   if (stale.size) p = { ...p, turns: p.turns.filter((_, i) => !stale.has(i)) };
-  if (!supportNeeds.has(plan.need)) return p;
   const current = p.turns.length - (p.mode === "handoff" ? 2 : 1);
-  if (asksToUsePassage(p.turns[current].text)) return p;
+  const currentText = p.turns[current].text;
+  // A pin is permission, not a reason to disclose it. Only this request can supply the reason.
+  if (plan.need !== "quiet" && (plan.fact || asksToUsePassage(currentText))) return p;
   // Remove the entire earlier article exchange: its answer can itself contain the verbatim source.
   // Keep ordinary conversation and the actual first pet of this handoff unchanged.
   let omitGroup = false;

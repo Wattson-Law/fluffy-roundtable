@@ -210,3 +210,22 @@ test("the host leaves a closing thought, not an invitation to start another roun
   assert.equal(calls, 0);
   assert.equal(canPass(answered("看山，我想在书签上留一句给明天的自己。", last)), true);
 });
+
+test("pinning an article never sends it with grocery errands or bedtime, directly or echoed in older model answers", async () => {
+  const { materialForTurn } = await import("../src/lib/pet-turn-plan.ts");
+  const history = [
+    { speaker: "user", text: "这篇里有几张便签？" },
+    { speaker: "owl", text: reading.excerpt },
+  ];
+  for (const text of ["帮我列一份明天买菜的清单。", "今晚想睡了。"]) {
+    const p = materialForTurn({
+      mode: "reader",
+      reading,
+      turns: [...history, { speaker: "user", text }],
+    });
+    assert.deepEqual(p, { mode: "reader", turns: [{ speaker: "user", text }] });
+  }
+  const night = startSpeech(start(), key, "今晚想睡了。", 8, true, reading);
+  assert.equal(night.anchor, undefined);
+  assert.match(night.book.threads[0].turns.at(-1).text, /晚安/);
+});

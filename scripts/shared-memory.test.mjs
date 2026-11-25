@@ -224,3 +224,16 @@ test("a reader-chosen memory can be retrieved by its unambiguous subject without
     /第一次|第二次/,
   );
 });
+
+test("forget this follows the new memory slip, not an older recalled topic; an ambiguous pronoun never picks a victim", () => {
+  let b = ask(born(), page.url, "帮我记住，我家有一只猫。", t).book;
+  b = ask(b, page.url, "我最近在找工作，有点焦虑。", t + 1).book;
+  const left = ask(b, page.url, "忘了这件事。", t + 2).book;
+  assert.deepEqual(
+    memory(left).map((m) => m.id),
+    ["pet"],
+  );
+  const noFocus = { ...b, threads: b.threads.map((r) => ({ ...r, memoryFocus: undefined })) };
+  const unchosen = ask(noFocus, page.url, "忘了这件事。", t + 3).book;
+  assert.equal(memory(unchosen).length, 2);
+});

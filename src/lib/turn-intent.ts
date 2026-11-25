@@ -209,7 +209,13 @@ export function readTurn(text: string, previous?: TurnContext): ReadingOfTurn {
   const continuingElsewhere =
     parts.slice(0, -1).some((p) => stop.test(p) && leavesReading(p)) &&
     /(?:想|继续|可以|来)(?:聊|说|谈|问)|聊聊|说说|谈谈/.test(lastClause);
-  if (stop.test(lastClause)) need = "quiet";
+  if (
+    stop.test(lastClause) ||
+    /^(?:我(?:今晚|今天|现在)?|(?:今晚|今天|现在)我?)?(?:想睡了|要睡了|要去睡了|准备睡了|去睡觉了)[呀啊啦吧~～]*$/u.test(
+      lastClause,
+    )
+  )
+    need = "quiet";
   const uncertain = unsure.test(text) && !undecided.test(text);
   const corrected = correction.test(text);
   const specified = aboutSomeoneElse

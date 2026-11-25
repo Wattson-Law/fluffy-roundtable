@@ -128,6 +128,13 @@ function ensureSession(): ReadingSession {
 /** For new personal, article and passage rooms. Only an explicit chat resume uses its stored key. */
 export const sessionRoomKey = (materialKey?: string) =>
   scopedRoomKey(ensureSession().scope, materialKey);
+/** An explicit “chat about this article” selects exactly this library version, never a whole old table. */
+export function shelfArticleKey(item: ReadingTrailItem): string {
+  const row = historyRows().find((r) => r.url === item.url && r.id === item.id);
+  return sessionRoomKey(
+    `shelf:${row && isOpaqueId(row.readRef) ? row.readRef : JSON.stringify([item.id, item.url])}`,
+  );
+}
 // Explicit projection: extra shelf fields (including lifetime visits) aren't table material.
 type Material = Omit<ReadingTrailItem, "readAt" | "visits">;
 function material({

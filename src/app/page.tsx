@@ -26,6 +26,7 @@ import {
   getJournal,
   getTrail,
   sessionRoomKey,
+  shelfArticleKey,
   memoryOnly,
   pushTrail,
   rememberSeat,
@@ -245,10 +246,7 @@ export default function Home() {
     setDrafts((prev) => ({ ...prev, [id]: thought.text }));
   }
   function fromShelf(item: ReadingTrailItem) {
-    const past = getBook()
-      .threads.filter((r) => !r.bookmark && r.context.at(-1)?.url === item.url && r.turns.length)
-      .sort((a, b) => b.touched - a.touched)[0];
-    openRoom([item], past?.key);
+    openRoom([item], shelfArticleKey(item));
   }
   function stopChoice() {
     choiceReq.current?.abort();

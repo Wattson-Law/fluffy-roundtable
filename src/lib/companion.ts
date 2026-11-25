@@ -276,7 +276,7 @@ export function startSpeech(
       append({ ...r, conversation: { need: "ack" } }, "user", "typed", text, now),
     );
     const user = started.threads.find((r) => r.key === key)!.turns.at(-1)!;
-    const recorded = captureStatement(started, text, user.id, now);
+    const recorded = captureStatement(started, text, user.id, now, key);
     const m = recorded.memories?.find((m) => m.sourceTurn === user.id);
     return {
       book: changeRoom(recorded, key, (r) =>
@@ -365,7 +365,7 @@ export function startSpeech(
     .turns.findLast((t) => t.speaker === "user")!;
   const recorded =
     !mute && !withdraw && need !== "quiet" && !fact && !localSource
-      ? captureStatement(book, text, user.id, now)
+      ? captureStatement(book, text, user.id, now, key)
       : book;
   if (!live) return { book: recorded };
   return { book: recorded, anchor: user.id, fallback };

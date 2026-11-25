@@ -127,7 +127,13 @@ function statement(text: string): { topic: string; label: string } | undefined {
   )
     return { topic: "chosen", label: explicit };
 }
-export function captureStatement(b: Book, text: string, turn: string, at: number): Book {
+export function captureStatement(
+  b: Book,
+  text: string,
+  turn: string,
+  at: number,
+  roomKey: string,
+): Book {
   const paused =
     b.memories?.some((m) => m.id === "work") &&
     /^我(?:已经|现在|暂时)?(?:不再|不打算再)找工作(?:了)?[。！!]*$/.test(text);
@@ -137,8 +143,12 @@ export function captureStatement(b: Book, text: string, turn: string, at: number
     old = all.find((m) =>
       fact.topic === "chosen" ? m.label === fact.label : m.topic === fact.topic,
     );
-  if (old?.label === fact.label) return b; // Repetition is not a new invitation.
+
   const id = old?.id ?? (fact.topic === "chosen" ? "chosen-" + turn : fact.topic);
+  const threads = b.threads.map((r) =>
+    r.key === roomKey && r.memoryFocus !== id ? { ...r, memoryFocus: id } : r,
+  );
+  if (old?.label === fact.label) return { ...b, threads }; // Keep the referent, without a new invitation.
   const row: SharedMemory = {
     id,
     topic: id,
@@ -149,6 +159,7 @@ export function captureStatement(b: Book, text: string, turn: string, at: number
   };
   return {
     ...b,
+    threads,
     memories: [row, ...all.filter((m) => m.id !== id)].slice(0, 12),
     pending: b.pending?.memoryId === id ? null : b.pending,
     ...(old ? { memoryEpoch: Math.max(at, (b.memoryEpoch ?? 0) + 1) } : {}),
@@ -268,14 +279,16 @@ export function handleMemory(b: Book, room: Room, text: string, now: number) {
     /(?:[这那](?:一)?件事|[这那]个话题|上次(?:我)?(?:在忙什么|说过什么)|上回(?:我)?在忙什么|记下了什么|之前我(?:说过|提过)什么)(?:吗|呢|了|吧)?[。！？!? ]*$/u.test(
       text,
     );
+  const atTable = all.filter((m) =>
+    room.turns.some((t) => t.speaker === "user" && t.id === m.sourceTurn),
+  );
   const id =
     byLabel?.id ??
     matches[0]?.id ??
     hint ??
     (pointsHere
       ? (room.memoryFocus ??
-        all.find((m) => room.turns.some((t) => t.speaker === "user" && t.id === m.sourceTurn))
-          ?.id ??
+        (atTable.length === 1 ? atTable[0].id : undefined) ??
         (all.length === 1 ? all[0].id : undefined))
       : undefined);
   if (action === "forgetAll") {

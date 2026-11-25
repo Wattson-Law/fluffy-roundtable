@@ -218,7 +218,8 @@ def run(p, base, shots, live):
         expect(button(room, "听另一位接话")).to_have_count(0)
         expect(room.locator(".room-error")).to_have_count(0)
         assert saved_turns() == before_handoff + int(second is not None)
-        assert handoff.get("reading") == {"title": READ, "excerpt": sample_line}
+        # The reader has already supplied their complete dilemma; no need to upload the page again.
+        assert "reading" not in packet and "reading" not in handoff
         print(
             "Handoff input includes the actual reader question and full previous reply."
         )
@@ -277,6 +278,11 @@ def run(p, base, shots, live):
     expect(rows.filter(has_text=NOTEBOOK).locator("small")).to_contain_text("读过 1 次")
     button(rows.filter(has_text=READ), "和它们聊这篇 →").click()
     expect(room.locator(".room-context b")).to_have_text(READ)
+    expect(room.get_by_role("log")).to_have_count(0)
+    button(room, "关闭小屋").click()
+    button(p, "阅读记录（2篇）").click()
+    button(shelf, re.compile("^过去的聊天")).click()
+    button(rows.filter(has_text=READ), "继续这段聊天 →").click()
     expect(bubble.locator("p")).to_have_text(last_text)
     assert (
         posts.count(API) == (4 if live else 0)
@@ -284,7 +290,7 @@ def run(p, base, shots, live):
     ), posts
     assert not errors, errors
     print(
-        "Reopening the older article returned to its own discussion without new model calls."
+        "Selecting the article alone starts a single-source table; selecting its old chat restores the conversation without a new model call."
     )
     return gap
 

@@ -149,8 +149,10 @@ def race(browser, base, interrupt):
     pending = []
     p.route("**/api/roundtable/follow-up", lambda r: pending.append(r))
     p.goto(base)
-    # A persisted legacy article is available only when the reader chooses it.
-    button(p, row["title"]).click()
+    # Only the explicit chat entry restores the entire old guide/card.
+    button(p, "阅读记录（1篇）").click()
+    p.get_by_role("button", name=re.compile("^过去的聊天")).click()
+    button(p, "继续这段聊天 →").click()
     button(p, "接过看山的掌控卡").click()
     with p.expect_request("**/api/roundtable/follow-up"):
         button(p, "看一张卡").click()

@@ -113,7 +113,9 @@ async def reader(browser, base, i, burst):
         await btn(room, "听另一位接话").click()
         await expect(bubble.locator("p")).to_have_text("接：答：" + one)
         for packet in packets:
-            assert packet.get("reading") == {"title": TITLE, "excerpt": preview}, packet
+            assert (
+                "reading" not in packet
+            ), packet  # A neutral interruption/handoff needs no passage.
         delays = []
         for n in range(burst):
             s = msg(f"暂缓连发{n}")
@@ -146,7 +148,7 @@ async def reader(browser, base, i, burst):
             await expect(bubble.locator(".voice-source")).to_have_text("本机兜底")
             await expect(room.locator(".room-error")).to_contain_text(notice)
         await pin()
-        keep = msg("我不想换个话题，还想聊书签。")
+        keep = msg("我不想换个话题，还想聊这段里的书签。")
         await posted(keep)
         await expect(bubble.locator("p")).to_have_text("答：" + keep)
         assert packets[-1].get("reading") == {"title": TITLE, "excerpt": preview}
@@ -188,7 +190,7 @@ async def reader(browser, base, i, burst):
         )
         await expect(btn(room, "把这段放上桌")).to_be_visible()
         await pin()
-        after = msg("聊另一篇")
+        after = msg("，聊聊这篇的写法。")
         await posted(after)
         await expect(bubble.locator("p")).to_have_text("答：" + after)
         assert (
