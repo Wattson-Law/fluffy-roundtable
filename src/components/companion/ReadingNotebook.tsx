@@ -73,7 +73,7 @@ export function ReadingNotebook({
             </button>
           )}
         </div>
-        <div className="shelf-list">
+        <div key={tab} className="shelf-list drawer-page">
           {tab === "thoughts" ? (
             thoughtPanel
           ) : tab === "memory" ? (

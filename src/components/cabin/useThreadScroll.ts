@@ -22,7 +22,9 @@ export function useThreadScroll(turns?: Turn[]) {
   function onScroll() {
     const el = viewport.current;
     if (!el || !tail) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight <= 20) {
+    // Focusing a partly visible avatar can reveal one face without leaving the latest turn.
+    const tailSlop = Math.min(40, el.clientHeight * 0.2);
+    if (el.scrollHeight - el.scrollTop - el.clientHeight <= tailSlop) {
       following.current = true;
       setLeftAt(null);
     } else {

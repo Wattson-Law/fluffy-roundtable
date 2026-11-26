@@ -466,10 +466,16 @@ export default function Home() {
                   慢慢翻。
                 </h1>
                 <p>
-                  这里是你的知乎阅读书架。读到想多聊一句的地方，
+                  在这儿刷知乎。刷完心乱了，就来窗边问它们——
                   <br className="desktop-break" />
-                  就来窗边，和四位伙伴坐一坐。
+                  它亲眼看着你刚翻过哪些帖子，开口时不用从头解释。
                 </p>
+                <ul className="hero-voices" aria-label="四位伙伴的分工">
+                  <li data-speaker="purr_cat">呼噜猫 · 先接情绪</li>
+                  <li data-speaker="owl">猫头鹰 · 核对原句</li>
+                  <li data-speaker="shiba">护短柴犬 · 替你站边</li>
+                  <li data-speaker="kanshan">刘看山 · 递掌控卡</li>
+                </ul>
                 <button className="hero-imprint" onClick={() => meet("purr_cat")}>
                   <Feather size={13} /> 认识四位伙伴 <ArrowUpRight size={12} />
                 </button>
@@ -519,12 +525,13 @@ export default function Home() {
                       <p>
                         知乎书单尚未连上。这两篇由伴读编辑室撰写，不是知乎回答；阅读、留便签和开圆桌都可以照常体验。
                       </p>
-                      {sampleItems.map((t) => (
-                        <button key={t.id} onClick={() => openSample(t)}>
-                          <BookOpen size={14} />
-                          {t.title}
-                          <ArrowUpRight size={14} />
-                        </button>
+                      {sampleItems.map((t, index) => (
+                        <div className="sample-leaf" key={t.id}>
+                          <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                          <button onClick={() => openSample(t)}>
+                            {t.title}<ArrowUpRight size={14} aria-hidden="true" />
+                          </button>
+                        </div>
                       ))}
                     </section>
                   )}
@@ -600,6 +607,7 @@ export default function Home() {
         )}
         {overlay === "cabin" && (
           <CabinModal
+            onOpenJournal={() => setOverlay("journal")}
             key={key ?? "empty"}
             room={room}
             publicTopic={desk.topic?.title}

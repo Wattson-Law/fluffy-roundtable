@@ -1,4 +1,12 @@
 // Runtime imports of the approved artwork: originals stay at their archived paths.
+import roundTable from "../../assets/cabin-v2/round-table-watercolor.webp";
+import wake0 from "../../docs/visual-target-v6.1/source/assets/桌宠/wake0.webp";
+import wake1 from "../../docs/visual-target-v6.1/source/assets/桌宠/wake1.webp";
+import wake2 from "../../docs/visual-target-v6.1/source/assets/桌宠/wake2.webp";
+import wake3 from "../../docs/visual-target-v6.1/source/assets/桌宠/wake3.webp";
+import wake4 from "../../docs/visual-target-v6.1/source/assets/桌宠/wake4.webp";
+import wake5 from "../../docs/visual-target-v6.1/source/assets/桌宠/wake5.webp";
+import wake6 from "../../docs/visual-target-v6.1/source/assets/桌宠/wake6.webp";
 import room from "../../docs/visual-target-v6.1/source/assets/小屋/room.webp";
 import shell from "../../docs/visual-target-v6.1/source/assets/小屋/blank.webp";
 import table from "../../docs/visual-target-v6.1/source/assets/小屋/table.webp";
@@ -39,6 +47,8 @@ export const art = {
   room: room.src,
   shell: shell.src,
   table: table.src,
+  roundTable: roundTable.src,
+  wake: [wake0, wake1, wake2, wake3, wake4, wake5, wake6].map((i) => i.src),
   rail: rail.src,
   clouds: clouds.src,
   reading: reading.src,

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { ArrowUpRight, X } from "lucide-react";
 import { art } from "@/lib/art";
@@ -19,6 +19,29 @@ export function KanshanDock({
   onDismiss: () => void;
 }) {
   const reduced = useReducedMotion();
+  const [wakeFrame, setWakeFrame] = useState<number | null>(null);
+  const wakeTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!reduced) art.wake.forEach((src) => { new Image().src = src; });
+  }, [reduced]);
+  useEffect(() => () => {
+    if (wakeTimer.current !== null) clearTimeout(wakeTimer.current);
+  }, []);
+  function wake() {
+    if (wakeTimer.current !== null) return;
+    if (reduced) { onOpen(); return; }
+    function step(i: number) {
+      if (i === art.wake.length) {
+        wakeTimer.current = null;
+        setWakeFrame(null);
+        onOpen();
+      } else {
+        setWakeFrame(i);
+        wakeTimer.current = window.setTimeout(() => step(i + 1), 28);
+      }
+    }
+    step(0);
+  }
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     if (reduced) return;
@@ -62,10 +85,13 @@ export function KanshanDock({
           </div>
         </section>
       )}
-      <button className="window-pet" onClick={onOpen} aria-label="打开毛茸茸小屋">
+      {count > 0 && !invited && (
+        <p className="dock-whisper" aria-hidden="true" onClick={wake}>刚记下 {count} 篇，想聊点我</p>
+      )}
+      <button className="window-pet" data-waking={wakeFrame !== null} onClick={wake} aria-label="打开毛茸茸小屋">
         <img
           className="pet-ink"
-          src={art.ink[reduced ? 0 : frame]}
+          src={wakeFrame === null ? art.ink[reduced ? 0 : frame] : art.wake[wakeFrame]}
           alt="刘看山伏在窗沿，用黑爪扶着书写字"
         />
         <img className="pet-rail" src={art.rail} alt="" />

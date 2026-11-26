@@ -65,6 +65,7 @@ export function QuestionDetail({
           {items.map((it, i) => (
             <AnswerCard
               key={it.id || it.url}
+              questionTitle={title}
               item={it}
               index={i}
               recorded={recordedUrls.has(it.url)}

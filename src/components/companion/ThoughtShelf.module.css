@@ -1,7 +1,7 @@
 .panel {
   min-width: 0;
-  padding: 12px 0;
-  border-block: 1px solid var(--line, #dce0d2);
+  padding: 9px 2px;
+  border-block: 1px dashed #d8d9cb;
   color: var(--ink, #273d34);
   font-size: 14px;
   line-height: 1.5;
@@ -30,6 +30,7 @@
   outline: 2px solid #42765a;
   outline-offset: 2px;
 }
+.bar button { min-height: 32px; padding: 3px 10px; border: 1px solid #d8d9cb; border-radius: 20px; background: #faf7ed; }
 .editor {
   display: grid;
   gap: 6px;

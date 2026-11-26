@@ -5,6 +5,13 @@ import type { JournalEntry, PassageBookmark } from "@/types";
 import { art } from "@/lib/art";
 import { PaperDialog } from "@/components/companion/PaperDialog";
 import { dateLabel } from "@/components/companion/ReadingNotebook";
+const badgeCats: Record<JournalEntry["catBadgeTheme"], string> = {
+  compass_orange: art.resting.purr_cat,
+  cocoa_ragdoll: art.sleeping,
+  goggles_calico: art.portrait.purr_cat,
+  cyber_gpu: art.portrait.purr_cat,
+};
+
 export function CatJournalDrawer({
   onClose,
   entries,
@@ -26,8 +33,8 @@ export function CatJournalDrawer({
             <X size={18} />
           </button>
         </header>
-        <div className="shelf-list">
-          <p className="muted">只收下你亲自拍板的卡片。一起读过的原帖，也会夹在卡片里。</p>
+        <div className="shelf-list drawer-page">
+          <p className="muted">{entries.length ? `已收录 ${entries.length} 张 · 只收下你亲自拍板的卡片。` : "只收下你亲自拍板的卡片。一起读过的原帖，也会夹在卡片里。"}</p>
           {!entries.length ? (
             <div className="shelf-empty">
               <img src={art.sleeping} alt="睡着的呼噜猫" />
@@ -36,6 +43,7 @@ export function CatJournalDrawer({
           ) : (
             entries.map((e) => (
               <article key={e.id} className="decision-paper journal-entry">
+                <img className="journal-cat" src={badgeCats[e.catBadgeTheme]} alt="" aria-hidden="true" />
                 <small>
                   <BookHeart size={13} />
                   {dateLabel(e.createdAt)} · {e.catBadgeName}

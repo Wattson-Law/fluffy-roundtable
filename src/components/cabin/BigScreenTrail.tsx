@@ -17,7 +17,7 @@ export function BigScreenTrail({
         initial={{ opacity: 0, scaleY: 0.82, y: -14 }}
         animate={{ opacity: 1, scaleY: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 180, damping: 22 }}
-        className="bigscreen p-3"
+        className="rounded-2xl border border-[#dbd4c3] bg-[#f5f1e7] p-3"
         style={{ transformOrigin: "top center" }}
       >
         <div className="mb-2 flex items-center justify-between px-1">
@@ -39,7 +39,7 @@ export function BigScreenTrail({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12 + i * 0.09 }}
-              className="paper-card w-[190px] shrink-0 rounded-lg p-2.5 transition hover:-translate-y-0.5"
+              className="border border-[#e6dfd0] bg-[#fdfbf5] w-[190px] shrink-0 rounded-lg p-2.5 transition hover:-translate-y-0.5"
             >
               <p className="line-clamp-2 text-[12px] font-medium leading-snug text-cabin-950">
                 {t.title}
@@ -81,7 +81,7 @@ function RadarBars({ radar }: { radar: RoundtableRadar }) {
       className="mt-2.5 grid grid-cols-3 gap-2"
     >
       {bars.map((b, i) => (
-        <div key={b.label} className="cabin-panel rounded-lg px-2.5 py-1.5">
+        <div key={b.label} className="bg-[#435747] rounded-lg px-2.5 py-1.5">
           <div className="flex items-baseline justify-between">
             <span className="text-[10px] text-paper-50/70">{b.label}</span>
             <span className="text-[11px] font-semibold tabular-nums text-paper-50">{b.v}</span>

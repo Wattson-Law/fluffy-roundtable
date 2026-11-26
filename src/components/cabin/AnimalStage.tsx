@@ -19,7 +19,7 @@ function Entrance({ settled }: { settled: boolean }) {
   }
   return (
     <div className={"gather-scene " + (settled ? "at-rest" : "arriving")} aria-hidden="true">
-      <img className="room-table" src={art.table} alt="" />
+      <img className="room-table" src={art.roundTable} alt="" />
       <img className="room-host" src={art.ink[0]} alt="" />
       <img className="arr-owl" src={art.entry.owl[frame(340, 1690)]} alt="" />
       <img className="arr-cat" src={art.entry.cat[frame(610, 1880)]} alt="" />
@@ -32,9 +32,11 @@ const seats: Speaker[] = ["owl", "purr_cat", "kanshan", "shiba"];
 
 export function RoomScene({
   speaker,
+  nudgedPet,
   settled,
   onAddress,
 }: {
+  nudgedPet: Speaker | null;
   speaker?: Turn["speaker"];
   settled: boolean;
   onAddress: (pet: Speaker) => void;
@@ -52,7 +54,7 @@ export function RoomScene({
       role={speaker ? "group" : "img"}
       aria-label={!speaker ? "看山在桌边，伙伴们来到小屋" : `四位伙伴同桌。${label}`}
     >
-      <span className="scene-label" aria-hidden="true">
+      <span className="scene-label" data-speaker={speaker ?? "gather"} aria-hidden="true">
         <i />
         {label}
       </span>
@@ -65,22 +67,25 @@ export function RoomScene({
             className="bench-seat"
             data-speaker={pet}
             data-active={speaker === pet}
+            data-nudged={nudgedPet === pet}
             aria-label={`和${names[pet]}说句话`}
             title={`把话递给${names[pet]}`}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onAddress(pet)}
           >
-            <img className="pose-rest" src={art.resting[pet]} alt="" draggable={false} />
-            <img className="pose-talk" src={art.portrait[pet]} alt="" draggable={false} />
+            <span className="seat-performance" aria-hidden="true">
+              <img className="pose-rest" src={art.resting[pet]} alt="" draggable={false} />
+              <img className="pose-talk" src={art.portrait[pet]} alt="" draggable={false} />
+            </span>
             <MessageSquareText
               className="seat-voice"
-              size={17}
+              size={21}
               strokeWidth={1.8}
               aria-hidden="true"
             />
           </button>
         ))}
-        <img className="bench-table" src={art.table} alt="" draggable={false} />
+        <img className="bench-table" src={art.roundTable} alt="" draggable={false} />
       </div>
     </div>
   );

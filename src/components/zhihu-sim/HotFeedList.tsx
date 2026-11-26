@@ -5,10 +5,10 @@ import { Loader2 } from "lucide-react";
 import type { HotItem } from "@/types";
 
 const TAG_STYLE: Record<string, string> = {
-  人生选择: "bg-amber-50 text-amber-700 border-amber-200",
-  科技: "bg-sky-50 text-sky-700 border-sky-200",
-  情感: "bg-rose-50 text-rose-700 border-rose-200",
-  热点: "bg-slate-100 text-slate-600 border-slate-200",
+  人生选择: "bg-[#faf1df] text-[#845a28] border-[#e7d4b1]",
+  科技: "bg-[#eaf1ef] text-[#355e58] border-[#c9dcd8]",
+  情感: "bg-[#f8ecec] text-[#8d4c52] border-[#e4c9cc]",
+  热点: "bg-[#eff0e8] text-[#596459] border-[#d9ddd0]",
 };
 
 /** 实时热榜卡片流 */
@@ -52,7 +52,7 @@ export function HotFeedList({
           <div className="flex gap-3">
             <span
               className={`mt-0.5 shrink-0 text-[15px] font-bold tabular-nums ${
-                i < 3 ? "text-[#FF6B35]" : "text-zh-sub"
+                i < 3 ? "text-[#b5553b]" : "text-zh-sub"
               }`}
             >
               {i + 1}

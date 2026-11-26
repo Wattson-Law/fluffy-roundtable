@@ -54,7 +54,7 @@ export function RoundThread({
               </span>
             ) : (
               <button
-                className="message-face"
+                className="message-face pet-face"
                 type="button"
                 aria-label={`和${names[who]}说句话`}
                 title={`把话递给${names[who]}`}

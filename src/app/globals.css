@@ -39,46 +39,6 @@ body {
   overflow: hidden;
 }
 
-/* ================= 陪伴层：毛茸茸小屋（手绘绘本篝火夜色） ================= */
-.cabin-bg {
-  background-color: #142126;
-  background-size: cover;
-  background-position: center;
-}
-
-/* 篝火暖光从底部中央升起 */
-.cabin-ember-glow {
-  background: radial-gradient(
-    ellipse 58% 44% at 50% 100%,
-    rgba(245, 158, 11, 0.3) 0%,
-    rgba(240, 122, 34, 0.14) 38%,
-    transparent 70%
-  );
-}
-
-/* 头脑特工队式弧形大光幕 */
-.bigscreen {
-  background: linear-gradient(180deg, rgba(233, 230, 218, 0.97), rgba(226, 222, 206, 0.93));
-  border: 2px solid rgba(255, 210, 122, 0.55);
-  box-shadow:
-    0 0 48px rgba(255, 210, 122, 0.3),
-    inset 0 2px 14px rgba(255, 255, 255, 0.6);
-  border-radius: 26px / 20px;
-}
-
-/* 奶油色水彩纸卡片 */
-.paper-card {
-  background: #fff8eb;
-  border: 1px solid rgba(216, 196, 154, 0.7);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
-}
-
-.cabin-panel {
-  background: rgba(29, 45, 53, 0.86);
-  border: 1px solid rgba(255, 210, 122, 0.22);
-  backdrop-filter: blur(6px);
-}
-
 /* 猫头鹰高亮的原文证据句 */
 mark.evidence {
   background: linear-gradient(transparent 56%, rgba(232, 181, 74, 0.55) 56%);
@@ -94,9 +54,6 @@ mark.evidence {
 .scroll-thin::-webkit-scrollbar-thumb {
   background: rgba(133, 144, 166, 0.3);
   border-radius: 99px;
-}
-.scroll-thin-warm::-webkit-scrollbar-thumb {
-  background: rgba(255, 210, 122, 0.3);
 }
 .scroll-thin::-webkit-scrollbar-track {
   background: transparent;

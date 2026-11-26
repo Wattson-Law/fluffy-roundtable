@@ -25,6 +25,15 @@ type ArticleControls = {
   choosing: boolean;
 };
 
+function leadSentence(text: string, fallback: string) {
+  const clean = text.trim().replace(/\s+/g, " ");
+  if (!clean) return fallback;
+  const sentence = clean.match(/^[^。！？!?]{0,57}[。！？!?]/u);
+  if (sentence) return sentence[0];
+  const chars = Array.from(clean);
+  return chars.length > 56 ? `${chars.slice(0, 56).join("")}……` : clean;
+}
+
 export function CabinModal({
   room,
   draft,
@@ -37,6 +46,7 @@ export function CabinModal({
   chat,
   cabinExtras,
   publicDesk,
+  onOpenJournal,
   publicTopic,
   memorySlip,
 }: {
@@ -50,6 +60,7 @@ export function CabinModal({
   article?: ArticleControls;
   cabinExtras?: ReactNode;
   publicDesk?: ReactNode;
+  onOpenJournal?: () => void;
   publicTopic?: string;
   memorySlip?: ReactNode;
   chat?: {
@@ -76,13 +87,20 @@ export function CabinModal({
       return;
     }
     setLeaving(true);
-    closing.current = window.setTimeout(onClose, 340);
+    closing.current = window.setTimeout(onClose, 320);
   }
   useEffect(() => () => clearTimeout(closing.current), []);
   const [settled, setSettled] = useState(!!room?.turns.length || !!reduced),
     [cardOpen, setCardOpen] = useState(!!room?.committed && !room?.conversation);
   const entry = useRef<HTMLInputElement>(null);
   const [addressNotice, setAddressNotice] = useState("");
+  const [nudgedPet, setNudgedPet] = useState<Speaker | null>(null);
+  const [addressed, setAddressed] = useState(false);
+  const feedback = useRef({ seat: 0, compose: 0 });
+  useEffect(() => {
+    const timers = feedback.current;
+    return () => { clearTimeout(timers.seat); clearTimeout(timers.compose); };
+  }, []);
   const cardRef = useRef<HTMLDivElement>(null),
     composing = useRef(false);
   const thread = useThreadScroll(room?.turns);
@@ -148,6 +166,12 @@ export function CabinModal({
     onDraftStart?.();
     setAddressNotice("");
     setDraft(next);
+    clearTimeout(feedback.current.seat);
+    clearTimeout(feedback.current.compose);
+    setNudgedPet(pet);
+    setAddressed(true);
+    feedback.current.seat = window.setTimeout(() => setNudgedPet(null), 380);
+    feedback.current.compose = window.setTimeout(() => setAddressed(false), 420);
   }
   function submit() {
     if (!inputs || chat?.checking || !draft.trim() || composing.current) return;
@@ -162,11 +186,9 @@ export function CabinModal({
       className={"room-dialog" + (leaving ? " folding" : "")}
       onClose={fold}
     >
-      <div
-        className="cabin-paper"
-        inert={leaving}
-        style={{ backgroundImage: `url("${art.shell}"), url("${art.clouds}")` }}
-      >
+      <div className="cabin-paper" inert={leaving}>
+        <div className="cabin-shell-bg" aria-hidden="true"
+          style={{ backgroundImage: `url("${art.shell}"), url("${art.clouds}")` }} />
         <div className="roof-words">THE READING ROOM</div>
         <header className="room-title">
           <h2>毛茸茸圆桌</h2>
@@ -187,7 +209,7 @@ export function CabinModal({
           </span>
           <b>{publicTopic ?? room?.title ?? "窗边随聊"}</b>
         </div>
-        <RoomScene speaker={turns?.at(-1)?.speaker} settled={settled} onAddress={address} />
+        <RoomScene nudgedPet={nudgedPet} speaker={turns?.at(-1)?.speaker} settled={settled} onAddress={address} />
         {started && (
           <div className="thread-bar">
             <span className="thread-heading">
@@ -264,16 +286,14 @@ export function CabinModal({
                       <Feather size={13} /> 看山抄下这一句
                     </small>
                     <p>
-                      {room.context.at(-1)?.contentText.trim().slice(0, 76) ||
-                        room.context.at(-1)?.title}
+                      {leadSentence(room.context.at(-1)?.contentText ?? "", room.context.at(-1)?.title ?? "")}
                     </p>
                     <span>
                       {room.context.at(-1)?.origin === "sample"
-                        ? "本地试读，不会发送文章。"
+                        ? "本地试读，不发文章。"
                         : r || loading
                           ? "看山在整理这篇的材料。"
                           : "选文章导读时，才提交本轮摘录。"}
-                      也可以不聊文章。
                     </span>
                   </>
                 )}
@@ -325,6 +345,7 @@ export function CabinModal({
             {!publicTopic && article && cardOpen && room && cardAvailable && (
               <div ref={cardRef}>
                 <ControlCard
+                  onOpenJournal={onOpenJournal}
                   room={room}
                   busy={article.choosing}
                   onChoose={article.onChoose}
@@ -355,7 +376,7 @@ export function CabinModal({
               <>
                 {article && !readerLed && !started && (
                   <button
-                    className="room-continue"
+                    className="room-continue is-primary"
                     disabled={loading || !!draft.trim()}
                     onClick={article.onNext}
                   >
@@ -377,7 +398,7 @@ export function CabinModal({
                   </button>
                 )}
                 {!readerLed && finished && !cardOpen && (
-                  <button className="room-continue" onClick={() => setCardOpen(true)}>
+                  <button className="room-continue is-primary" onClick={() => setCardOpen(true)}>
                     接过看山的掌控卡 <ArrowRight size={15} />
                   </button>
                 )}
@@ -431,6 +452,7 @@ export function CabinModal({
                 )}
                 <form
                   className="chat-compose"
+                  data-addressed={addressed}
                   onSubmit={(e) => {
                     e.preventDefault();
                     submit();

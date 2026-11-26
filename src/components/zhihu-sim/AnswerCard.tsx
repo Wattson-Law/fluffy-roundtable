@@ -12,17 +12,20 @@ import type { PassageBookmark, ZhihuItem } from "@/types";
 export function AnswerCard({
   item,
   index,
+  questionTitle,
   recorded,
   onRead,
   onClip,
 }: {
   item: ZhihuItem;
   index: number;
+  questionTitle?: string;
   recorded: boolean;
   onRead: (item: ZhihuItem) => void;
   onClip: (item: ZhihuItem, mark: PassageBookmark) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [failedAvatar, setFailedAvatar] = useState<string>();
   const toggle = () => {
     if (!expanded) onRead(item);
     setExpanded(!expanded);
@@ -33,36 +36,31 @@ export function AnswerCard({
   return (
     <article
       data-read-index={index}
+      data-recorded={recorded}
       className={`answer-paper zh-card rounded-lg p-4 transition ${
-        recorded ? "border-ember-400/70 shadow-[0_0_0_1px_rgba(255,210,122,0.35)]" : ""
+        recorded ? "shadow-[0_0_0_1px_rgba(217,196,150,0.38)]" : ""
       }`}
     >
       {/* 作者行 */}
       <div className="mb-2 flex items-center gap-2">
-        {item.authorAvatar ? (
+        {item.authorAvatar && item.authorAvatar !== failedAvatar ? (
           <img
             src={item.authorAvatar}
             alt=""
             referrerPolicy="no-referrer"
             loading="lazy"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src =
-                "data:image/svg+xml;utf8," +
-                encodeURIComponent(
-                  `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"><rect width="28" height="28" rx="14" fill="#E3E8EF"/></svg>`,
-                );
-            }}
+            onError={() => setFailedAvatar(item.authorAvatar)}
             className="h-7 w-7 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="h-7 w-7 shrink-0 rounded-full bg-slate-200" />
+          <span aria-hidden="true" className="author-seal">{item.author.trim().slice(0, 1) || "读"}</span>
         )}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-[13px] font-medium text-zh-text">{item.author}</span>
             {item.authoritylevel >= 3 && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-sky-50 px-1 py-0.5 text-[10px] text-sky-700">
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-[#eaf1ef] px-1 py-0.5 text-[10px] text-[#355e58]">
                 <ShieldCheck size={9} />
                 Lv.{item.authoritylevel}
               </span>
@@ -74,13 +72,13 @@ export function AnswerCard({
         </div>
 
         {recorded && (
-          <span className="shrink-0 rounded-full bg-ember-400/20 px-2 py-0.5 text-[10px] text-ember-600">
+          <span className="shrink-0 rounded-full bg-[#f6ebd0] px-2 py-0.5 text-[10px] text-[#7c5a26]">
             看山已记下
           </span>
         )}
       </div>
 
-      {item.title && index >= 0 && (
+      {item.title && item.title !== questionTitle && index >= 0 && (
         <h3 className="mb-1.5 text-[14.5px] font-semibold leading-snug text-zh-text">
           {item.title}
         </h3>
@@ -103,7 +101,7 @@ export function AnswerCard({
       {long && (
         <button
           onClick={toggle}
-          className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] font-medium text-zh-blue"
+          className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-medium text-zh-blue"
         >
           {expanded ? (
             <>

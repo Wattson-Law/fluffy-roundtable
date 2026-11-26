@@ -92,7 +92,7 @@ export function ListeningDesk({
       <footer>
         {continuous
           ? "伙伴会慢慢接到下一题，你一动笔就停。"
-          : "也可以在输入框说「聊点科技的」或「我来出题：……」。"}
+          : "也可以说「聊点科技的」。"}
         {onCompose && (
           <button
             type="button"

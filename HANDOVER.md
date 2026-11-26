@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-26 · 窗边第五席水彩圆桌与叙事审美精修
+
+- **水彩圆桌与入座连续性**：新增与原画同笔触的透明水彩透视圆桌 [round-table-watercolor.webp](assets/cabin-v2/round-table-watercolor.webp)，入座态与群聊态共用同一张圆桌；重构五层前后错落座次与「读者第五席」留白，校准四席 `.seat-voice` 方位以零遮挡面部或铅笔，所有旧原画与三视图保留不动。
+- **看山抬头响应与暖宣纸校色**：`KanshanDock` 接入 `wake0–6` 看山停笔抬头帧动画并增设阅读篇数微低语（不使用 `.cat-note` 类名、不泄露正文）；`CabinModal` 将屋顶外壳拆为暖宣纸校色图层，统一 `--serif` 出版物衬线字体、`.room-flow` 柔雾边缘与主按钮层次。
+- **项目叙事闭环与仪式感**：首页 Hero 补充陪伴核心叙事、四声部围巾导览与编号试读小册；阅读卡去重同题标题并更换暖纸印章头像；`ListeningDesk` 与 `ThoughtShelf` 轻量化去绿条；`ControlCard` 增设横纹信笺、`已落章` 圆印与直达手账入口，`CatJournalDrawer` 贴回主题小猫角印。
+- **规格与新增验收**：两轮设计规格见 [第一轮规格](docs/superpowers/specs/2026-11-26-frontend-aesthetics-motion-upgrade.md) 与 [第二轮规格](docs/superpowers/specs/2026-11-26-narrative-and-aesthetic-polish-v2.md)；新增布局回归 `scripts/verify_cabin_layout.py` 与全旅程验收 `scripts/verify_polish.py`，`typecheck`、`test:companion`（104 项）、`build`、`pack:trial` 与 6 套 Playwright 回归均已通过。
+
+---
+
 ## 2026-11-26 · 现有小屋换成连续群聊
 
 - [真实交互录屏](docs/group-chat/handoff.gif) · [手机](docs/group-chat/group-phone.png) · [桌面](docs/group-chat/group-desktop.png)。正式首页、`/trial` 和[离线包](docs/reader-trial/window-seat.zip)共用一间屋。入场、原三视图及动作不变；发言和倾听只切换同一座位的两张核准立绘，读者发言时没有伙伴冒充正在输入。

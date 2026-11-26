@@ -6,12 +6,13 @@
 }
 .listening-desk {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   margin: 10px 0;
-  padding: 12px 14px;
-  border-inline-start: 3px solid var(--leaf);
-  background: var(--pale);
+  padding: 10px 12px;
+  border: 1px dashed #cfd5c3;
+  border-radius: 10px;
+  background: #f6f4ea;
   color: var(--ink);
   overflow-wrap: anywhere;
 }
@@ -71,3 +72,7 @@
   outline: 2px solid var(--forest);
   outline-offset: 3px;
 }
+
+.listening-desk:not(:has(.listening-topic)) { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-block: 6px; padding-block: 6px; }
+.listening-desk:not(:has(.listening-topic)) header strong { font-size: 14px; }
+.listening-desk:not(:has(.listening-topic)) footer { flex-basis: 100%; }
