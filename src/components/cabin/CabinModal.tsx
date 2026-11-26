@@ -1,15 +1,16 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "framer-motion";
-import { ArrowRight, ArrowUp, BookOpen, MessageSquare, Feather, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, BookOpen, MessageSquare, Feather, X } from "lucide-react";
 import { BookmarkTicket } from "@/components/companion/PassageBookmark";
-import type { PassageBookmark, QuoteRef } from "@/types";
+import type { PassageBookmark, QuoteRef, Speaker } from "@/types";
 import { art } from "@/lib/art";
 import type { TableReading } from "@/lib/table-reading";
-import { zhihuSource } from "@/lib/listening-topics";
-import { names, type Room } from "@/lib/companion";
+import { names, type Room, type Turn } from "@/lib/companion";
 import { PaperDialog } from "@/components/companion/PaperDialog";
 import { RoomScene, Evidence, Sources } from "./AnimalStage";
+import { RoundThread } from "./RoundThread";
+import { useThreadScroll } from "./useThreadScroll";
 import { ControlCard } from "./ControlCard";
 
 type ArticleControls = {
@@ -79,12 +80,13 @@ export function CabinModal({
   }
   useEffect(() => () => clearTimeout(closing.current), []);
   const [settled, setSettled] = useState(!!room?.turns.length || !!reduced),
-    [cardOpen, setCardOpen] = useState(!!room?.committed && !room?.conversation),
-    [showLog, setShowLog] = useState(false);
-  const logRef = useRef<HTMLDivElement>(null),
-    flow = useRef<HTMLDivElement>(null),
-    cardRef = useRef<HTMLDivElement>(null),
+    [cardOpen, setCardOpen] = useState(!!room?.committed && !room?.conversation);
+  const entry = useRef<HTMLInputElement>(null);
+  const [addressNotice, setAddressNotice] = useState("");
+  const cardRef = useRef<HTMLDivElement>(null),
     composing = useRef(false);
+  const thread = useThreadScroll(room?.turns);
+  const flowId = useId();
   useEffect(() => {
     if (settled) return;
     if (reduced) {
@@ -99,20 +101,13 @@ export function CabinModal({
     started = !!turns?.length,
     personal = !room?.context.length,
     readerLed = !!room?.conversation || personal;
-  const line = turns?.findLast((t) => t.speaker !== "user");
-  const readerLast = turns?.at(-1)?.speaker === "user";
-  const count = turns?.length ?? 0,
-    finished = !!room && !!r && room.cursor >= r.dialogues.length,
+  const finished = !!room && !!r && room.cursor >= r.dialogues.length,
     cardAvailable = !!r && (finished || readerLed);
   useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [count, showLog]);
-  useEffect(() => {
-    if (cardOpen)
-      cardRef.current?.scrollIntoView({
-        block: "nearest",
-        behavior: "instant",
-      });
+    if (cardOpen && cardRef.current) {
+      thread.markAway();
+      cardRef.current.scrollIntoView({ block: "nearest", behavior: "instant" });
+    }
   }, [cardOpen]);
   function locateQuote(q: QuoteRef) {
     const m = room?.bookmark;
@@ -120,13 +115,44 @@ export function CabinModal({
       ? () => article.onLocate(m)
       : undefined;
   }
-  const pinnedEvidence = !!(line?.quoteRef && locateQuote(line.quoteRef));
+  const pinnedEvidence = turns?.some((t) => t.quoteRef && locateQuote(t.quoteRef));
+  function attachment(t: Turn) {
+    const q = t.quoteRef,
+      locate = q && locateQuote(q);
+    return (
+      <>
+        {q &&
+          (locate && room?.bookmark ? (
+            <BookmarkTicket verified mark={room.bookmark} onLocate={locate} />
+          ) : (
+            <Evidence quote={q} />
+          ))}
+        {t.speaker === "shiba" && t.kind === "script" && r && (
+          <Sources sources={r.curatedSources} />
+        )}
+      </>
+    );
+  }
   const inputs = !!room && settled && !leaving;
+  function address(pet: Speaker) {
+    if (!inputs || composing.current) return;
+    const salutation = Object.values(names)
+      .map((name) => `${name}，`)
+      .find((prefix) => draft.startsWith(prefix));
+    const next = `${names[pet]}，${salutation ? draft.slice(salutation.length) : draft}`;
+    entry.current?.focus({ preventScroll: true });
+    if (next.length > 400) {
+      setAddressNotice("草稿已满，原话已保留。");
+      return;
+    }
+    onDraftStart?.();
+    setAddressNotice("");
+    setDraft(next);
+  }
   function submit() {
     if (!inputs || chat?.checking || !draft.trim() || composing.current) return;
-    setShowLog(false);
     setCardOpen(false);
-    flow.current?.scrollTo({ top: 0 });
+    setAddressNotice("");
     onSay(draft);
     setDraft("");
   }
@@ -161,194 +187,163 @@ export function CabinModal({
           </span>
           <b>{publicTopic ?? room?.title ?? "窗边随聊"}</b>
         </div>
-        <div className="room-flow" ref={flow}>
-          <RoomScene line={line} settled={settled} labelLocal={!!chat?.model} />
-          {publicTopic && inputs && publicDesk}
-          {!publicTopic && line?.kind === "listening" && zhihuSource(line.publicUrl) && (
-            <a
-              className="paper-link"
-              href={zhihuSource(line.publicUrl)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              回看这条知乎原帖 ↗
-            </a>
-          )}
-          {!publicTopic && chat?.model && chat.preview && (
-            <section className="table-reading" data-shared={!!chat.shared} aria-label="本桌选段">
-              <div>
-                <strong>{chat.shared ? "桌上原句" : "要一起读这段吗？"}</strong>
-                <button type="button" aria-pressed={!!chat.shared} onClick={chat.onToggleReading}>
-                  {chat.shared ? "撤下原句" : "把这段放上桌"}
+        <RoomScene speaker={turns?.at(-1)?.speaker} settled={settled} onAddress={address} />
+        {started && (
+          <div className="thread-bar">
+            <span className="thread-heading">
+              <MessageSquare size={14} aria-hidden="true" />
+              圆桌群聊 <small className="thread-count">{turns.length} 条</small>
+              <small className="thread-tip">点头像递话</small>
+            </span>
+            {thread.away ? (
+              <button
+                type="button"
+                className="thread-latest"
+                aria-controls={flowId}
+                onClick={thread.followLatest}
+              >
+                <ArrowDown size={13} aria-hidden="true" />
+                {thread.unread ? `${thread.unread} 条新消息` : "回到最新"}
+              </button>
+            ) : (
+              (article || publicDesk || cabinExtras || memorySlip) && (
+                <button type="button" aria-controls={flowId} onClick={thread.showDesk}>
+                  桌边工具 ↑
+                </button>
+              )
+            )}
+          </div>
+        )}
+        <div
+          className="room-flow"
+          id={flowId}
+          ref={thread.viewport}
+          onScroll={thread.onScroll}
+          tabIndex={0}
+          aria-label="小屋内容"
+          role="region"
+        >
+          <div className="room-flow-content" ref={thread.content}>
+            {publicTopic && inputs && publicDesk}
+            {!publicTopic && chat?.model && chat.preview && (
+              <section className="table-reading" data-shared={!!chat.shared} aria-label="本桌选段">
+                <div>
+                  <strong>{chat.shared ? "桌上原句" : "要一起读这段吗？"}</strong>
+                  <button type="button" aria-pressed={!!chat.shared} onClick={chat.onToggleReading}>
+                    {chat.shared ? "撤下原句" : "把这段放上桌"}
+                  </button>
+                </div>
+                <small>《{chat.preview.title}》</small>
+                <q>{chat.preview.excerpt}</q>
+                <small>
+                  {chat.shared
+                    ? "聊原文时只带这段；只想吐槽时不带。撤下或收屋后，刚才的聊天也不再发给伙伴。"
+                    : "现在只有你看得到。放上桌后，聊到原文时才把标题和这段话交给在线伙伴。"}
+                </small>
+              </section>
+            )}
+            {article && room?.bookmark && !readerLed && !pinnedEvidence && (
+              <BookmarkTicket
+                mark={room.bookmark}
+                onLocate={() => article.onLocate(room.bookmark!)}
+              />
+            )}
+            {personal && !started ? (
+              <div className="gather-note window-welcome">
+                <small>
+                  <Feather size={13} /> 呼噜猫把椅子挪近了一点
+                </small>
+                <p>来啦，坐会儿。今天过得怎么样？</p>
+                <span>说自己的事也行，不用先带一篇文章。</span>
+              </div>
+            ) : !started && room?.bookmark ? null : !started && room && article ? (
+              <div className="gather-note">
+                {!(chat?.model && chat.preview) && (
+                  <>
+                    <small>
+                      <Feather size={13} /> 看山抄下这一句
+                    </small>
+                    <p>
+                      {room.context.at(-1)?.contentText.trim().slice(0, 76) ||
+                        room.context.at(-1)?.title}
+                    </p>
+                    <span>
+                      {room.context.at(-1)?.origin === "sample"
+                        ? "本地试读，不会发送文章。"
+                        : r || loading
+                          ? "看山在整理这篇的材料。"
+                          : "选文章导读时，才提交本轮摘录。"}
+                      也可以不聊文章。
+                    </span>
+                  </>
+                )}
+                <button className="paper-link" onClick={article.onPersonal}>
+                  不带文章，去窗边坐坐 →
                 </button>
               </div>
-              <small>《{chat.preview.title}》</small>
-              <q>{chat.preview.excerpt}</q>
-              <small>
-                {chat.shared
-                  ? "聊原文时只带这段；只想吐槽时不带。撤下或收屋后，刚才的聊天也不再发给伙伴。"
-                  : "现在只有你看得到。放上桌后，聊到原文时才把标题和这段话交给在线伙伴。"}
-              </small>
-            </section>
-          )}
-          {article && room?.bookmark && (!readerLed || pinnedEvidence) && (
-            <BookmarkTicket
-              verified={pinnedEvidence}
-              mark={room.bookmark}
-              onLocate={() => article.onLocate(room.bookmark!)}
-            />
-          )}
-          {personal && !started ? (
-            <div className="gather-note window-welcome">
-              <small>
-                <Feather size={13} /> 呼噜猫把椅子挪近了一点
-              </small>
-              <p>来啦，坐会儿。今天过得怎么样？</p>
-              <span>说自己的事也行，不用先带一篇文章。</span>
-            </div>
-          ) : !started && room?.bookmark ? null : !started && room && article ? (
-            <div className="gather-note">
-              {!(chat?.model && chat.preview) && (
-                <>
-                  <small>
-                    <Feather size={13} /> 看山抄下这一句
-                  </small>
+            ) : null}
+            {memorySlip}
+            {!publicTopic && inputs && publicDesk}
+            {inputs && cabinExtras}
+            {!publicTopic && article && room && !personal && (started || readerLed) && (
+              <details className="context-details">
+                <summary>本轮阅读与原帖 · {room.context.length}</summary>
+                {readerLed && room.bookmark && !pinnedEvidence && (
+                  <BookmarkTicket
+                    mark={room.bookmark}
+                    onLocate={() => article.onLocate(room.bookmark!)}
+                  />
+                )}
+                {room.context.map((t) => (
+                  <a key={t.url} href={t.url} target="_blank" rel="noreferrer">
+                    {t.title} ↗
+                  </a>
+                ))}
+                {r && (
                   <p>
-                    {room.context.at(-1)?.contentText.trim().slice(0, 76) ||
-                      room.context.at(-1)?.title}
+                    {r.radar.summaryTag}
+                    {room.context.at(-1)?.origin !== "sample" &&
+                      ` · 干货 ${r.radar.drynessScore} / 情绪 ${r.radar.anxietyScore} / 引流线索 ${r.radar.adRiskScore}`}
                   </p>
-                  <span>
-                    {room.context.at(-1)?.origin === "sample"
-                      ? "本地试读，不会发送文章。"
-                      : r || loading
-                        ? "看山在整理这篇的材料。"
-                        : "选文章导读时，才提交本轮摘录。"}
-                    也可以不聊文章。
-                  </span>
-                </>
-              )}
-              <button className="paper-link" onClick={article.onPersonal}>
-                不带文章，去窗边坐坐 →
-              </button>
-            </div>
-          ) : (
-            <>
-              {line?.quoteRef && !pinnedEvidence && (
-                <Evidence quote={line.quoteRef} onLocate={locateQuote(line.quoteRef)} />
-              )}
-              {line?.speaker === "shiba" && line.kind === "script" && r && (
-                <Sources sources={r.curatedSources} />
-              )}
-              {(count > 1 || readerLast) && (
-                <div className="transcript">
-                  <div className="transcript-head">
-                    <strong>
-                      <MessageSquare size={15} /> {showLog ? "聊天记录" : "刚才聊到"}
-                    </strong>
-                    <button onClick={() => setShowLog(!showLog)} aria-expanded={showLog}>
-                      {showLog ? "收起" : "展开全部"} · {count}
-                    </button>
-                  </div>
-                  <div
-                    className={"chat-log " + (showLog ? "full" : "")}
-                    ref={logRef}
-                    role="log"
-                    aria-label="聊天记录"
-                    aria-live="off"
-                  >
-                    {(showLog ? turns : (readerLast ? turns : turns?.slice(0, -1))?.slice(-2))?.map(
-                      (m) => (
-                        <div
-                          key={m.id}
-                          data-kind={m.kind}
-                          className={m.speaker === "user" ? "user-line" : ""}
-                        >
-                          <b>
-                            {m.speaker === "user" ? "你" : names[m.speaker]}
-                            {m.kind === "note"
-                              ? " · 主动便签"
-                              : m.kind === "reply" && m.via === "model"
-                                ? " · 模型"
-                                : m.via === "fallback"
-                                  ? " · 本机兜底"
-                                  : ""}
-                          </b>
-                          <span>{m.text}</span>
-                          {showLog && m.kind === "listening" && zhihuSource(m.publicUrl) && (
-                            <a
-                              href={zhihuSource(m.publicUrl)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              知乎原帖 ↗
-                            </a>
-                          )}
-                          {showLog && m.quoteRef && (
-                            <Evidence quote={m.quoteRef} onLocate={locateQuote(m.quoteRef)} />
-                          )}
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-          {memorySlip}
-          {!publicTopic && inputs && publicDesk}
-          {inputs && cabinExtras}
-          {!publicTopic && article && room && !personal && (started || readerLed) && (
-            <details className="context-details">
-              <summary>本轮阅读与原帖 · {room.context.length}</summary>
-              {readerLed && room.bookmark && !pinnedEvidence && (
-                <BookmarkTicket
-                  mark={room.bookmark}
-                  onLocate={() => article.onLocate(room.bookmark!)}
+                )}
+                {!r && readerLed && (
+                  <button className="paper-link" onClick={article.onRetry} disabled={loading}>
+                    {loading ? "正在整理原文…" : "单独整理这篇的资料 →"}
+                  </button>
+                )}
+                {r?.meta.degraded && <p>{r.meta.note || "本轮仅使用已取得的材料。"}</p>}
+                {readerLed && cardAvailable && !cardOpen && (
+                  <button className="paper-link" onClick={() => setCardOpen(true)}>
+                    查看这篇的掌控卡 →
+                  </button>
+                )}
+                <button className="paper-link" onClick={article.onPersonal}>
+                  不带文章，去窗边坐坐 →
+                </button>
+              </details>
+            )}
+            {!publicTopic && article && cardOpen && room && cardAvailable && (
+              <div ref={cardRef}>
+                <ControlCard
+                  room={room}
+                  busy={article.choosing}
+                  onChoose={article.onChoose}
+                  onCommit={article.onCommit}
                 />
-              )}
-              {room.context.map((t) => (
-                <a key={t.url} href={t.url} target="_blank" rel="noreferrer">
-                  {t.title} ↗
-                </a>
-              ))}
-              {r && (
-                <p>
-                  {r.radar.summaryTag}
-                  {room.context.at(-1)?.origin !== "sample" &&
-                    ` · 干货 ${r.radar.drynessScore} / 情绪 ${r.radar.anxietyScore} / 引流线索 ${r.radar.adRiskScore}`}
-                </p>
-              )}
-              {!r && readerLed && (
-                <button className="paper-link" onClick={article.onRetry} disabled={loading}>
-                  {loading ? "正在整理原文…" : "单独整理这篇的资料 →"}
-                </button>
-              )}
-              {r?.meta.degraded && <p>{r.meta.note || "本轮仅使用已取得的材料。"}</p>}
-              {readerLed && cardAvailable && !cardOpen && (
-                <button className="paper-link" onClick={() => setCardOpen(true)}>
-                  查看这篇的掌控卡 →
-                </button>
-              )}
-              <button className="paper-link" onClick={article.onPersonal}>
-                不带文章，去窗边坐坐 →
-              </button>
-            </details>
-          )}
-          {!publicTopic && article && cardOpen && room && cardAvailable && (
-            <div ref={cardRef}>
-              <ControlCard
-                room={room}
-                busy={article.choosing}
-                onChoose={article.onChoose}
-                onCommit={article.onCommit}
-              />
-            </div>
-          )}
-          {article && error && (!readerLed || cardOpen) && (
-            <p className="room-error" role="status">
-              {error} {room && !r && <button onClick={article.onRetry}>再试一次</button>}
-            </p>
-          )}
+              </div>
+            )}
+            {article && error && (!readerLed || cardOpen) && (
+              <p className="room-error" role="status">
+                {error} {room && !r && <button onClick={article.onRetry}>再试一次</button>}
+              </p>
+            )}
+            <RoundThread
+              turns={turns ?? []}
+              labelLocal={!!chat?.model}
+              attachment={attachment}
+              onAddress={address}
+            />
+          </div>
         </div>
         <footer className="room-footer">
           {!settled ? (
@@ -372,11 +367,7 @@ export function CabinModal({
                   <button
                     className="room-continue"
                     disabled={!!draft.trim()}
-                    onClick={() => {
-                      setShowLog(false);
-                      article.onNext();
-                      flow.current?.scrollTo({ top: 0 });
-                    }}
+                    onClick={article.onNext}
                   >
                     听下一句{" "}
                     <small>
@@ -433,6 +424,11 @@ export function CabinModal({
                     {chat.notice}
                   </p>
                 )}
+                {addressNotice && (
+                  <small className="address-notice" role="status">
+                    {addressNotice}
+                  </small>
+                )}
                 <form
                   className="chat-compose"
                   onSubmit={(e) => {
@@ -441,6 +437,7 @@ export function CabinModal({
                   }}
                 >
                   <input
+                    ref={entry}
                     value={draft}
                     autoComplete="off"
                     spellCheck={false}
@@ -462,6 +459,7 @@ export function CabinModal({
                         e.preventDefault();
                     }}
                     onChange={(e) => {
+                      setAddressNotice("");
                       onDraftStart?.();
                       setDraft(e.target.value);
                     }}

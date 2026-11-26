@@ -1,5 +1,6 @@
 """Bounded interactive stress; every upstream is intercepted. No model quota or real reader history."""
 
+from round_chat_locators import latest_pet
 import argparse
 import asyncio
 import json
@@ -75,7 +76,7 @@ async def reader(browser, base, i, burst):
     await ctx.route("**/api/roundtable/chat", fixture)
     p.on("pageerror", lambda e: errors.append(str(e)))
     room = p.get_by_role("dialog", name="毛茸茸小屋")
-    bubble = room.locator(".speech-paper")
+    bubble = latest_pet(room)
     entry = room.get_by_role("textbox", name="我也说一句")
 
     async def send(s):
@@ -107,11 +108,11 @@ async def reader(browser, base, i, burst):
         await posted(one)
         await entry.fill(msg("尚未发送的第二句"))
         event(releases, one).set()
-        await expect(bubble.locator("p")).to_have_text("答：" + one)
+        await expect(bubble.locator(".message-bubble")).to_have_text("答：" + one)
         await expect(entry).to_have_value(msg("尚未发送的第二句"))
         await entry.fill("")
         await btn(room, "听另一位接话").click()
-        await expect(bubble.locator("p")).to_have_text("接：答：" + one)
+        await expect(bubble.locator(".message-bubble")).to_have_text("接：答：" + one)
         for packet in packets:
             assert (
                 "reading" not in packet
@@ -123,7 +124,7 @@ async def reader(browser, base, i, burst):
             delays.append(s)
         end = msg("最新一句")
         await posted(end)
-        await expect(bubble.locator("p")).to_have_text("答：" + end)
+        await expect(bubble.locator(".message-bubble")).to_have_text("答：" + end)
         for s in reversed(delays):
             event(releases, s).set()
         # Withdrawing is a new sharing boundary, even during a pending answer.
@@ -133,7 +134,7 @@ async def reader(browser, base, i, burst):
         event(releases, pending).set()
         safe = msg("不带摘录聊")
         await posted(safe)
-        await expect(bubble.locator("p")).to_have_text("答：" + safe)
+        await expect(bubble.locator(".message-bubble")).to_have_text("答：" + safe)
         assert packets[-1] == {
             "mode": "reader",
             "turns": [{"speaker": "user", "text": safe}],
@@ -150,12 +151,12 @@ async def reader(browser, base, i, burst):
         await pin()
         keep = msg("我不想换个话题，还想聊这段里的书签。")
         await posted(keep)
-        await expect(bubble.locator("p")).to_have_text("答：" + keep)
+        await expect(bubble.locator(".message-bubble")).to_have_text("答：" + keep)
         assert packets[-1].get("reading") == {"title": TITLE, "excerpt": preview}
         count = len(packets)
         await send("原文别发给模型。")
         await expect(bubble.locator(".voice-source")).to_have_text("本机回复")
-        await expect(bubble.locator("p")).to_contain_text("不再带")
+        await expect(bubble.locator(".message-bubble")).to_contain_text("不再带")
         await expect(btn(room, "把这段放上桌")).to_be_visible()
         assert len(packets) == count
         await pin()
@@ -163,7 +164,7 @@ async def reader(browser, base, i, burst):
             "咱们聊点别的吧，我想聊跑步" if i % 2 else "这篇先不聊了，我想聊聊面试。"
         )
         await posted(switch)
-        await expect(bubble.locator("p")).to_have_text("答：" + switch)
+        await expect(bubble.locator(".message-bubble")).to_have_text("答：" + switch)
         assert packets[-1] == {
             "mode": "reader",
             "turns": [{"speaker": "user", "text": switch}],
@@ -176,7 +177,6 @@ async def reader(browser, base, i, burst):
         event(releases, folded).set()
         await btn(p, "打开毛茸茸小屋").click()
         await expect(btn(room, "把这段放上桌")).to_be_visible()
-        await room.get_by_role("button", name="展开全部", exact=False).click()
         log = room.get_by_role("log")
         for s in delays + [pending, folded]:
             await expect(log).not_to_contain_text("答：" + s)
@@ -192,7 +192,7 @@ async def reader(browser, base, i, burst):
         await pin()
         after = msg("，聊聊这篇的写法。")
         await posted(after)
-        await expect(bubble.locator("p")).to_have_text("答：" + after)
+        await expect(bubble.locator(".message-bubble")).to_have_text("答：" + after)
         assert (
             packets[-1]["reading"]["title"] != TITLE and len(packets[-1]["turns"]) == 1
         )

@@ -1,6 +1,7 @@
 """Sentence-to-cabin browser acceptance. Pass --public to also exercise two genuine answers
 served by the configured app (see README; never coerces a trial into a Zhihu answer)."""
 
+from round_chat_locators import latest_pet
 import argparse
 import re
 from pathlib import Path
@@ -124,7 +125,7 @@ def trial(browser, base, mobile=False, shots=None):
         expect(p.locator(".cat-note p")).to_have_text("有空聊两句吗？")
         expect(p.locator(".cat-note")).not_to_contain_text(quote)
         button(p, "回猫猫一句").click()
-        expect(room.locator(".speech-paper")).to_contain_text("书签")
+        expect(latest_pet(room)).to_contain_text("书签")
         room.locator(".context-details summary").click()
         expect(room.locator(".bookmark-ticket q")).to_have_text(quote)
         button(p, "关闭小屋").click()
@@ -212,13 +213,13 @@ def public_answers(browser, base, query):
                 any(comment["excerpt"] in c for c in r["comments"])
                 and comment["sourceUrl"] == r["url"]
             )
-            expect(room.locator(".evidence-card").first).to_contain_text("读者留言")
-            expect(room.locator(".evidence-card q").first).to_have_text(
+            expect(latest_pet(room).locator(".evidence-card")).to_contain_text("读者留言")
+            expect(latest_pet(room).locator(".evidence-card q")).to_have_text(
                 comment["excerpt"]
             )
         else:
             assert not dog.get("quoteRef") and "没有" in dog["text"]
-            expect(room.locator(".speech-paper")).to_contain_text(
+            expect(latest_pet(room)).to_contain_text(
                 "没有这篇可核对的读者评论"
             )
         save_card(p)

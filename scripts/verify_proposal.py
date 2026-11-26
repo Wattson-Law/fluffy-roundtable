@@ -2,6 +2,7 @@
 All readers, sources and model replies below are fixtures. Does not contact Zhihu or a model.
 """
 
+from round_chat_locators import latest_pet
 import argparse
 import asyncio
 import re
@@ -125,7 +126,7 @@ async def scenario(browser, base, live, shots=None):
 
     try:
         r = await enter()
-        speech = r.locator(".speech-paper p")
+        speech = latest_pet(r).locator(".message-bubble")
         d = r.get_by_role("region", name="旁听话题")
         entry = r.get_by_role("textbox", name="我也说一句")
         if not live:

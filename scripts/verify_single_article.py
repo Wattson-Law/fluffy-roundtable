@@ -1,5 +1,6 @@
 """Seed an old two-article table; verify a fresh single-article request never submits its neighbour."""
 
+from round_chat_locators import latest_pet
 import argparse, json, re
 from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright, expect
@@ -120,7 +121,7 @@ def private_scope(browser, base):
     expect(p.get_by_text("看山已记下", exact=True)).to_be_visible(timeout=12000)
     p.get_by_role("button", name="打开毛茸茸小屋").click()
     r = p.get_by_role("dialog", name="毛茸茸小屋")
-    bubble = r.locator(".speech-paper p")
+    bubble = latest_pet(r).locator(".message-bubble")
 
     def send(t):
         r.get_by_role("textbox", name="我也说一句").fill(t)

@@ -1,12 +1,18 @@
 # 毛茸茸圆桌 · 工作交接文档
 
-> **最近交接**：2026-11-25（下方 Phase 1 为历史记录）
+> **最近交接**：2026-11-26（下方 Phase 1 为历史记录）
 > **当前阶段**：同一个知乎伴读首页已接通本次阅读、四位伙伴、可纠正的跨次记忆、短念头和公共旁听。可交给读者试用，非公网部署；五位真人反馈仍待收集。
 > **工程位置**：`D:\fluffy-roundtable`
 > **产品总设计稿 v1.0**：[先听懂，再接话](docs/superpowers/specs/2026-11-24-intent-first-cabin-design.md)（标签 `design-v1.0`）。新的对话、记忆、角色分工与验收标准以此为准。
 > **历史技术参考**：[早期产品设计与技术实现全案](docs/03-毛茸茸圆桌-产品设计与技术实现全案-for-Claude.md)；不覆盖总设计稿。现役功能以 README 和已通过的验证为准。
 
 ---
+
+## 2026-11-26 · 现有小屋换成连续群聊
+
+- [真实交互录屏](docs/group-chat/handoff.gif) · [手机](docs/group-chat/group-phone.png) · [桌面](docs/group-chat/group-desktop.png)。正式首页、`/trial` 和[离线包](docs/reader-trial/window-seat.zip)共用一间屋。入场、原三视图及动作不变；发言和倾听只切换同一座位的两张核准立绘，读者发言时没有伙伴冒充正在输入。
+- 最新发言和旧消息只出现一次；书签、可核对原句和帖子链接跟着对应的那一条。点头像或座位只把称呼放入可编辑草稿，按发送才发言；上翻读历史时，不被新回复拉到底部。
+- 新的桌面/手机验收：运行网页后执行 `python scripts/verify_group_chat.py --base http://127.0.0.1:3100`。离线发布执行 `npm run pack:trial`，再对生产预览执行 `python scripts/verify_trial.py --channel msedge --zip docs/reader-trial/window-seat.zip --base <生产预览地址>`；开发模式的热更新连接不算离线验收。
 
 ## 2026-11-25 · 总设计稿可试版
 

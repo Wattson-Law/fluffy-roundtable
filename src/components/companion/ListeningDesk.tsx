@@ -1,7 +1,7 @@
 import type { ListeningDeskModel } from "./useListeningTopics";
 import "./listening-desk.css";
 
-// Part of the existing client cabin. The one RoomScene owns the portrait and speech paper.
+// Topic controls only; the cabin renders public turns in its shared chat and stage.
 export function ListeningDesk({
   desk,
   onTakeFloor,

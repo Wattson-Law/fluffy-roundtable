@@ -1,5 +1,6 @@
 """Actual cabin, with offline listings. Optional screenshots show the running UI, not mockups."""
 
+from round_chat_locators import latest_pet
 import argparse
 import json
 import re
@@ -52,18 +53,18 @@ def experience(browser, base, mobile, shots):
     room = p.get_by_role("dialog", name="毛茸茸小屋")
     field = room.get_by_role("textbox", name="我也说一句")
     expect(field).to_be_visible(timeout=3500)
-    speech = room.locator(".speech-paper")
+    speech = latest_pet(room)
     send(room, "从哪开始好，帮我分析一下。")
-    expect(speech.locator("strong")).to_have_text("考据猫头鹰")
+    expect(speech.locator(".message-byline strong")).to_have_text("考据猫头鹰")
     send(room, "我想去，就是有点怕。")
-    expect(speech.locator("p")).to_contain_text("？")
-    expect(speech.locator("strong")).to_have_text("呼噜猫")
+    expect(speech.locator(".message-bubble")).to_contain_text("？")
+    expect(speech.locator(".message-byline strong")).to_have_text("呼噜猫")
     send(room, "我怕没听懂师傅教的，又不敢再问。")
     expect(speech).to_contain_text("练一句")
     send(room, "不用练了，我只想听你给我打打气。")
-    expect(speech.locator("strong")).to_have_text("护短柴犬")
+    expect(speech.locator(".message-byline strong")).to_have_text("护短柴犬")
     expect(speech).to_contain_text("我相信你")
-    expect(speech.locator("p")).not_to_contain_text("？")
+    expect(speech.locator(".message-bubble")).not_to_contain_text("？")
     expect(room.locator(".source-list,.evidence-card,.decision-paper")).to_have_count(0)
     if shots:
         shots.mkdir(parents=True, exist_ok=True)
@@ -72,16 +73,16 @@ def experience(browser, base, mobile, shots):
     send(room, "我想去，给我打打气。就是十点下班，末班车九点半。")
     expect(speech).to_contain_text("回家")
     send(room, "别光鼓励我。那明天我能先做什么？")
-    expect(speech.locator("strong")).to_have_text("刘看山")
+    expect(speech.locator(".message-byline strong")).to_have_text("刘看山")
     expect(speech).to_contain_text("下班")
     expect(
         room.get_by_role("button", name=re.compile("听下一句|接过看山"))
     ).to_have_count(0)
-    count = room.get_by_role("button", name=re.compile("展开全部")).inner_text()
+    count = room.locator(".thread-count").inner_text()
     button(room, "关闭小屋").click()
     p.reload()
     button(p, "打开毛茸茸小屋").click()
-    expect(room.get_by_role("button", name=re.compile("展开全部"))).to_have_text(count)
+    expect(room.locator(".thread-count")).to_have_text(count)
     expect(speech).to_contain_text("下班")
     assert not errors and not posts, (errors, posts)
     assert p.evaluate("document.documentElement.scrollWidth<=innerWidth")
@@ -171,7 +172,7 @@ def race(browser, base, interrupt):
     if interrupt == "compose":
         field.dispatch_event("compositionend")
         send(p, "不用分析，给我一点鼓励。")
-        expect(p.locator(".speech-paper")).to_contain_text("我相信你")
+        expect(latest_pet(p)).to_contain_text("我相信你")
     else:
         button(p, "打开毛茸茸小屋").click()
     assert p.evaluate("!localStorage.getItem('fr.companion.v1').includes('不应出现')")
@@ -225,23 +226,24 @@ def article_entry(browser, base):
         }
     )
     send(p, "原文里「写字」指什么？")
-    expect(p.locator(".speech-paper strong")).to_have_text("考据猫头鹰")
+    expect(latest_pet(p).locator(".message-byline strong")).to_have_text("考据猫头鹰")
     expect(p.locator(".evidence-card q")).to_contain_text("写字")
     send(p, "不看原文了，听我说。")
-    expect(p.locator(".speech-paper strong")).to_have_text("呼噜猫")
-    expect(p.locator(".evidence-card")).to_have_count(0)
+    expect(latest_pet(p).locator(".message-byline strong")).to_have_text("呼噜猫")
+    expect(latest_pet(p).locator(".evidence-card")).to_have_count(0)
+    expect(p.get_by_role("log").locator(".evidence-card q")).to_contain_text("写字")
     assert p.evaluate(
         "!JSON.parse(localStorage.getItem('fr.companion.v1')).threads.some(t=>t.turns.some(m=>m.text==='过时的开场'))"
     )
     p.locator(".context-details summary").click()
     button(p, "不带文章，去窗边坐坐 →").click()
     send(p, "给我点鼓励。")
-    expect(p.locator(".speech-paper")).to_contain_text("我相信你")
+    expect(latest_pet(p)).to_contain_text("我相信你")
     button(p, "关闭小屋").click()
     p.reload()
     button(p, "打开毛茸茸小屋").click()
     expect(p.locator(".room-context")).to_contain_text("窗边随聊")
-    expect(p.locator(".speech-paper")).to_contain_text("我相信你")
+    expect(latest_pet(p)).to_contain_text("我相信你")
     assert len(posts) == 1 and not errors, (posts, errors)
     ctx.close()
     print(

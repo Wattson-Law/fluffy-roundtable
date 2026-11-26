@@ -2,6 +2,7 @@
 Uses the real homepage, two clean readers, Playwright's clock and local fixture responses only.
 """
 
+from round_chat_locators import latest_pet
 import argparse, re
 from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright, expect
@@ -70,7 +71,7 @@ def run(browser, base, spoken):
             r = open_room()
             send(r, JOB)
             expect(r.locator(".memory-slip")).to_contain_text(LABEL)
-            expect(r.locator(".speech-paper p")).to_have_text("我听着呢。")
+            expect(latest_pet(r).locator(".message-bubble")).to_have_text("我听着呢。")
             btn(r, "关闭小屋").click()
         p.close()
         p = tab()
@@ -95,16 +96,16 @@ def run(browser, base, spoken):
         assert LABEL not in p.locator("body").inner_text()
         btn(p, "回猫猫一句").click()
         r = p.get_by_role("dialog", name="毛茸茸小屋")
-        expect(r.locator(".speech-paper p")).to_contain_text("上个月")
-        expect(r.locator(".speech-paper p")).to_contain_text("最近好一点了吗")
+        expect(latest_pet(r).locator(".message-bubble")).to_contain_text("上个月")
+        expect(latest_pet(r).locator(".message-bubble")).to_contain_text("最近好一点了吗")
         expect(r.locator(".room-context")).to_contain_text("不带文章")
         send(r, "我已经入职了。")
         expect(r.locator(".memory-slip")).to_contain_text("已经入职")
-        expect(r.locator(".speech-paper p")).to_have_text("我听着呢。")
+        expect(latest_pet(r).locator(".message-bubble")).to_have_text("我听着呢。")
         for n in ["猫猫", "猫头鹰", "狗狗", "看山"]:
             send(r, n + "，还记得我上次找工作的事吗？")
-            expect(r.locator(".speech-paper p")).to_contain_text("入职")
-            expect(r.locator(".voice-source")).to_have_text("本机回复")
+            expect(latest_pet(r).locator(".message-bubble")).to_contain_text("入职")
+            expect(latest_pet(r).locator(".voice-source")).to_have_text("本机回复")
         btn(r, "关闭小屋").click()
         p.get_by_role("button", name="阅读记录（1篇）").click()
         s = p.get_by_role("dialog", name="阅读记录与聊天")
@@ -122,7 +123,7 @@ def run(browser, base, spoken):
         btn(s, "关闭记录").click()
         r = open_room()
         send(r, "狗狗，还记得我上回在忙什么吗？")
-        expect(r.locator(".speech-paper p")).to_contain_text("没有记下")
+        expect(latest_pet(r).locator(".message-bubble")).to_contain_text("没有记下")
         btn(r, "关闭小屋").click()
         p.clock.set_system_time("2026-12-26T12:00:00+08:00")
         p.clock.fast_forward(320000)

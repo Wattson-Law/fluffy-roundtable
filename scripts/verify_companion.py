@@ -2,6 +2,7 @@
 Run the app first, then: python scripts/verify_companion.py --channel msedge [--shots DIR].
 """
 
+from round_chat_locators import latest_pet
 import argparse
 import re
 from pathlib import Path
@@ -110,11 +111,11 @@ def desktop(browser, base, shots):
     expect(btn(p, "开聊 · 听呼噜猫说")).to_be_visible()
     shot(p, shots, "02-伙伴入座")
     btn(p, "开聊 · 听呼噜猫说").click()
-    expect(p.locator(".speech-paper strong")).to_have_text("呼噜猫")
+    expect(latest_pet(p).locator(".message-byline strong")).to_have_text("呼噜猫")
     p.clock.fast_forward(15000)
     assert memory(p)["threads"][0]["cursor"] == 1
     p.get_by_role("button", name=re.compile("听下一句")).click()
-    expect(p.locator(".speech-paper strong")).to_have_text("考据猫头鹰")
+    expect(latest_pet(p).locator(".message-byline strong")).to_have_text("考据猫头鹰")
     expect(p.locator(".evidence-card").first).to_contain_text("下次翻到这一页")
     shot(p, shots, "03-小屋原文对话")
     entry = p.get_by_role("textbox", name="我也说一句")
@@ -124,7 +125,7 @@ def desktop(browser, base, shots):
     assert not any(m["speaker"] == "user" for m in memory(p)["threads"][0]["turns"])
     entry.dispatch_event("compositionend")
     btn(p, "发送消息").click()
-    expect(p.locator(".speech-paper strong")).to_have_text("呼噜猫")
+    expect(latest_pet(p).locator(".message-byline strong")).to_have_text("呼噜猫")
     entry.fill("还没写完")
     p.clock.fast_forward(320000)
     assert not notes(p), "interrupted typing"
@@ -141,8 +142,8 @@ def desktop(browser, base, shots):
     p.reload(wait_until="networkidle")
     expect(p.locator(".cat-note")).to_be_visible()
     btn(p, "回猫猫一句").click()
-    expect(p.locator(".speech-paper strong")).to_have_text("呼噜猫")
-    p.get_by_role("button", name=re.compile("展开全部")).click()
+    expect(latest_pet(p).locator(".message-byline strong")).to_have_text("呼噜猫")
+    expect(p.get_by_role("log").locator('[data-kind="note"]')).to_have_count(1)
     expect(p.get_by_role("log")).to_contain_text("主动便签")
     assert len(notes(p)) == 1
     expect(p.get_by_role("log")).to_contain_text("选择")
@@ -195,8 +196,8 @@ def mobile(browser, base, shots):
         expect(btn(p, "开聊 · 听呼噜猫说")).to_be_visible(timeout=7000)
         btn(p, "开聊 · 听呼噜猫说").click()
         p.get_by_role("button", name=re.compile("听下一句")).click()
-        expect(p.locator(".portrait-slot img")).to_have_attribute(
-            "alt", "考据猫头鹰的发言立绘", timeout=4000
+        expect(p.locator('.bench-seat[data-active="true"]')).to_have_attribute(
+            "data-speaker", "owl", timeout=4000
         )
         p.wait_for_timeout(780)
         assert p.evaluate("document.documentElement.scrollWidth<=innerWidth")
@@ -211,10 +212,10 @@ def mobile(browser, base, shots):
         assert field.bounding_box()["y"] + field.bounding_box()["height"] < h
         shot(p, shots, f"05-手机小屋-{w}")
         p.get_by_role("button", name=re.compile("听下一句")).click()
-        expect(p.locator(".speech-paper strong")).to_have_text("护短柴犬")
+        expect(latest_pet(p).locator(".message-byline strong")).to_have_text("护短柴犬")
         expect(p.locator(".source-list").get_by_role("link")).to_have_attribute("href", "/?sample=weekend-notebook")
         p.get_by_role("button", name=re.compile("听下一句")).click()
-        expect(p.locator(".speech-paper strong")).to_have_text("刘看山")
+        expect(latest_pet(p).locator(".message-byline strong")).to_have_text("刘看山")
         p.keyboard.press("Escape")
         expect(p.get_by_role("dialog")).to_have_count(0)
         assert not errors and not posts, (errors, posts)
@@ -324,7 +325,7 @@ def live_shape(browser, base):
     entry = p.get_by_role("textbox", name="我也说一句")
     entry.fill("想看这篇的原文证据")
     btn(p, "发送消息").click()
-    expect(p.locator(".speech-paper strong")).to_have_text("考据猫头鹰")
+    expect(latest_pet(p).locator(".message-byline strong")).to_have_text("考据猫头鹰")
     p.locator(".evidence-card").first.wait_for()
     expect(p.get_by_role("button", name=re.compile("听下一句"))).to_have_count(0)
     p.locator(".context-details summary").click()

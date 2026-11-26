@@ -4,6 +4,7 @@ With --live this sends four invented reader/handoff requests to the configured t
 No browser profile, stored trail, transport stub or API credential is supplied by this script.
 """
 
+from round_chat_locators import latest_pet
 import argparse
 import json
 import re
@@ -103,10 +104,10 @@ def run(p, base, shots, live):
         reply = obj["reply"]
         expect(bubble.locator(".voice-source")).to_have_text("模型回复")
         expect(bubble).to_have_attribute("data-speaker", reply["speaker"])
-        expect(bubble.locator("p")).to_have_text(reply["text"])
+        expect(bubble.locator(".message-bubble")).to_have_text(reply["text"])
         print(
             obj.get("model"),
-            bubble.locator("strong").inner_text() + "：" + reply["text"],
+            bubble.locator(".message-byline strong").inner_text() + "：" + reply["text"],
         )
         return r.request.post_data_json, reply
 
@@ -128,7 +129,7 @@ def run(p, base, shots, live):
     button(shelf, "关闭记录").click()
     button(p, "打开毛茸茸小屋").click()
     room = p.get_by_role("dialog", name="毛茸茸小屋")
-    bubble = room.locator(".speech-paper")
+    bubble = latest_pet(room)
     expect(room.locator(".room-context b")).to_have_text(READ)
     expect(room.locator(".room-context")).to_contain_text("本地试读")
     sample_line = (
@@ -188,7 +189,7 @@ def run(p, base, shots, live):
     if live:
         expect(bubble.locator(".voice-source")).to_have_text("本机回复")
     expect(bubble).to_have_attribute("data-speaker", "owl")
-    card = room.locator(".evidence-card")
+    card = bubble.locator(".evidence-card")
     quote = card.locator("q").inner_text()
     assert "我同意" in quote and quote in body, quote
     expect(card).to_contain_text(READ)
@@ -197,7 +198,7 @@ def run(p, base, shots, live):
     print("Local owl quote (verbatim, no POST):", quote)
     shot(room, "04-evidence")
 
-    last_text = bubble.locator("p").inner_text()
+    last_text = bubble.locator(".message-bubble").inner_text()
     transcript = [SOURCE, last_text]
     if live:
         packet, first = online(lambda: say(DISCUSS))
@@ -214,7 +215,7 @@ def run(p, base, shots, live):
         if second:
             assert second["speaker"] != first["speaker"]
         else:
-            expect(bubble.locator("p")).to_have_text(first["text"])
+            expect(bubble.locator(".message-bubble")).to_have_text(first["text"])
         expect(button(room, "听另一位接话")).to_have_count(0)
         expect(room.locator(".room-error")).to_have_count(0)
         assert saved_turns() == before_handoff + int(second is not None)
@@ -241,8 +242,7 @@ def run(p, base, shots, live):
     row = rows.filter(has_text=READ)
     button(row, "继续这段聊天 →").click()
     expect(room.locator(".room-context b")).to_have_text(READ)
-    expect(bubble.locator("p")).to_have_text(last_text)
-    button(room, re.compile("^展开全部")).click()
+    expect(bubble.locator(".message-bubble")).to_have_text(last_text)
     log = room.get_by_role("log", name="聊天记录")
     for text in transcript:
         expect(log).to_contain_text(text)
@@ -259,7 +259,7 @@ def run(p, base, shots, live):
     expect(button(p, "阅读记录（2篇）")).to_be_visible()
     button(p, "打开毛茸茸小屋").click()
     expect(room.locator(".room-context b")).to_have_text(NOTEBOOK)
-    expect(room.get_by_role("log")).to_have_count(0)
+    expect(room.get_by_role("log").locator(".round-message")).to_have_count(0)
     button(room, "开聊 · 听呼噜猫说").click()
     expect(bubble).to_have_attribute("data-speaker", "purr_cat")
     button(room, re.compile("^听下一句")).click()
@@ -278,12 +278,12 @@ def run(p, base, shots, live):
     expect(rows.filter(has_text=NOTEBOOK).locator("small")).to_contain_text("读过 1 次")
     button(rows.filter(has_text=READ), "和它们聊这篇 →").click()
     expect(room.locator(".room-context b")).to_have_text(READ)
-    expect(room.get_by_role("log")).to_have_count(0)
+    expect(room.get_by_role("log").locator(".round-message")).to_have_count(0)
     button(room, "关闭小屋").click()
     button(p, "阅读记录（2篇）").click()
     button(shelf, re.compile("^过去的聊天")).click()
     button(rows.filter(has_text=READ), "继续这段聊天 →").click()
-    expect(bubble.locator("p")).to_have_text(last_text)
+    expect(bubble.locator(".message-bubble")).to_have_text(last_text)
     assert (
         posts.count(API) == (4 if live else 0)
         and "/api/roundtable/analyze" not in posts

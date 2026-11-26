@@ -1,5 +1,6 @@
 """Same reading, three different requests. Default is an offline browser fixture; --live makes five sequential pet calls, never a load test."""
 
+from round_chat_locators import latest_pet
 import argparse
 import re
 from urllib.parse import urlsplit
@@ -65,7 +66,7 @@ def run(browser, base, live):
         expect(p.get_by_text("看山已记下", exact=True)).to_be_visible(timeout=14000)
         p.get_by_role("button", name="打开毛茸茸小屋").click()
         room = p.get_by_role("dialog", name="毛茸茸小屋")
-        bubble = room.locator(".speech-paper")
+        bubble = latest_pet(room)
         btn = lambda text: room.get_by_role("button", name=text, exact=True)
         expect(room.locator(".room-context b")).to_have_text(TITLE)
         pin = btn("把这段放上桌")
@@ -103,7 +104,7 @@ def run(browser, base, live):
                 return None, pkt
             assert obj["source"] == "model"
             reply = obj["reply"]
-            expect(bubble.locator("p")).to_have_text(reply["text"])
+            expect(bubble.locator(".message-bubble")).to_have_text(reply["text"])
             expect(bubble.locator(".voice-source")).to_have_text("模型回复")
             print(reply["speaker"] + "：" + reply["text"], flush=True)
             return reply, pkt
@@ -119,7 +120,7 @@ def run(browser, base, live):
         assert pkt["turns"][-1] == cat
         if second is None:
             expect(room.locator(".pet-test-floor")).to_contain_text(FLOOR)
-            expect(bubble.locator("p")).to_have_text(cat["text"])
+            expect(bubble.locator(".message-bubble")).to_have_text(cat["text"])
             print("第二位留白，无新气泡。", flush=True)
         else:
             assert second["speaker"] != cat["speaker"] and not re.search(

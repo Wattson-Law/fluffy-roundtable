@@ -1,5 +1,6 @@
 """Fresh browser, invented messages only. Default: fixture, --live: a real, metered model turn and handoff."""
 
+from round_chat_locators import latest_pet
 import argparse, asyncio
 from urllib.parse import urlparse
 from playwright.async_api import async_playwright, expect, Error
@@ -64,10 +65,10 @@ async def run(base, live):
             timeout=10000
         )
         await send("狗狗，小镇阅览室六点关门。晚班的人想借书，你有什么想法？")
-        bubble = p.locator(".speech-paper")
-        await expect(bubble.locator("strong")).to_have_text("护短柴犬", timeout=30000)
+        bubble = latest_pet(p)
+        await expect(bubble.locator(".message-byline strong")).to_have_text("护短柴犬", timeout=30000)
         assert await bubble.get_by_text("模型回复", exact=True).is_visible()
-        first = await bubble.locator("p").inner_text()
+        first = await bubble.locator(".message-bubble").inner_text()
         more = p.get_by_role("button", name="听另一位接话")
         count = "JSON.parse(localStorage.getItem('fr.companion.v1')).threads.reduce((n,t)=>n+t.turns.length,0)"
         before = await p.evaluate(count)
@@ -83,7 +84,7 @@ async def run(base, live):
         if result.get("source") == "reader_floor":
             assert "reply" not in result
             await expect(p.locator(".pet-test-floor")).to_contain_text("话头留给你")
-            await expect(bubble.locator("p")).to_have_text(first)
+            await expect(bubble.locator(".message-bubble")).to_have_text(first)
             assert await p.evaluate(count) == before
             report = "第二位留白。"
         else:
@@ -94,11 +95,11 @@ async def run(base, live):
             await expect(bubble).to_have_attribute(
                 "data-speaker", result["reply"]["speaker"]
             )
-            await expect(bubble.locator("p")).to_have_text(result["reply"]["text"])
+            await expect(bubble.locator(".message-bubble")).to_have_text(result["reply"]["text"])
             await expect(bubble.get_by_text("模型回复", exact=True)).to_be_visible()
             assert await p.evaluate(count) == before + 1
             report = (
-                await bubble.locator("strong").inner_text()
+                await bubble.locator(".message-byline strong").inner_text()
                 + "："
                 + result["reply"]["text"]
             )
@@ -112,9 +113,9 @@ async def run(base, live):
                 ("刘看山", "看山，把我们刚弄清的事留一句就好。"),
             ]:
                 await send(words)
-                await expect(bubble.locator("strong")).to_have_text(who, timeout=30000)
+                await expect(bubble.locator(".message-byline strong")).to_have_text(who, timeout=30000)
                 await expect(bubble.get_by_text("模型回复", exact=True)).to_be_visible()
-                print(who + "：" + await bubble.locator("p").inner_text())
+                print(who + "：" + await bubble.locator(".message-bubble").inner_text())
         else:
             assert sent[-1]["turns"][-1]["text"] == first
             await send("狗狗，这句要迟到。")

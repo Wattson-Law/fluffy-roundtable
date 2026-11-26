@@ -1,10 +1,10 @@
 "use client";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Quote } from "lucide-react";
+import { useReducedMotion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { ExternalLink, MessageSquareText, Quote } from "lucide-react";
 import { art } from "@/lib/art";
-import { duties, names, type Turn } from "@/lib/companion";
-import type { CuratedSource, QuoteRef } from "@/types";
+import { names, type Turn } from "@/lib/companion";
+import type { CuratedSource, QuoteRef, Speaker } from "@/types";
 
 function Entrance({ settled }: { settled: boolean }) {
   const [ms, setMs] = useState(0);
@@ -18,11 +18,7 @@ function Entrance({ settled }: { settled: boolean }) {
     return settled || ms >= end ? 3 : [0, 1, 2, 1][Math.max(0, Math.floor((ms - start) / 115)) % 4];
   }
   return (
-    <div
-      className={"gather-scene " + (settled ? "at-rest" : "arriving")}
-      aria-label="看山在桌边写字，猫头鹰飞向圆窗，呼噜猫和柴犬跑向桌边"
-      role="img"
-    >
+    <div className={"gather-scene " + (settled ? "at-rest" : "arriving")} aria-hidden="true">
       <img className="room-table" src={art.table} alt="" />
       <img className="room-host" src={art.ink[0]} alt="" />
       <img className="arr-owl" src={art.entry.owl[frame(340, 1690)]} alt="" />
@@ -31,78 +27,61 @@ function Entrance({ settled }: { settled: boolean }) {
     </div>
   );
 }
+// Seats never change keys: a handoff changes the pose in place, not the cast of the room.
+const seats: Speaker[] = ["owl", "purr_cat", "kanshan", "shiba"];
+
 export function RoomScene({
-  line,
+  speaker,
   settled,
-  labelLocal,
+  onAddress,
 }: {
-  line?: Turn;
+  speaker?: Turn["speaker"];
   settled: boolean;
-  labelLocal?: boolean;
+  onAddress: (pet: Speaker) => void;
 }) {
   const reduced = useReducedMotion();
-  const speaker = line?.speaker === "user" ? undefined : line?.speaker;
-  const [shown, setShown] = useState(line);
-  const latest = useRef(line);
-  useEffect(() => {
-    latest.current = line;
-    if (reduced || !shown || !line || line.speaker === shown.speaker) setShown(line);
-  }, [line, reduced, shown?.speaker]);
-  const caption = reduced || !shown || shown.speaker === line?.speaker ? line : shown;
-  const voice = caption?.speaker === "user" ? undefined : caption?.speaker;
+  const label = !speaker
+    ? "伙伴入座"
+    : speaker === "user"
+      ? "伙伴在听你说"
+      : `${names[speaker]} · 接话`;
   return (
     <div
-      className={"room-scene " + (speaker ? "is-speaking" : "is-gathering")}
+      className={`room-scene ${speaker ? "at-table" : "is-gathering"}`}
       style={{ backgroundImage: `url("${art.room}")` }}
+      role={speaker ? "group" : "img"}
+      aria-label={!speaker ? "看山在桌边，伙伴们来到小屋" : `四位伙伴同桌。${label}`}
     >
-      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {caption && voice ? `${names[voice]}：${caption.text}` : ""}
-      </span>
-      <span className="scene-label">
+      <span className="scene-label" aria-hidden="true">
         <i />
-        {speaker ? "圆桌现场" : "伙伴入座"}
+        {label}
       </span>
-      {!speaker || !line || !caption || !voice ? (
-        <Entrance settled={settled || !!reduced} />
-      ) : (
-        <div className="scene-talk">
-          <div className="portrait-slot">
-            <AnimatePresence
-              mode="wait"
-              initial={false}
-              onExitComplete={() => setShown(latest.current)}
-            >
-              <motion.img
-                key={speaker}
-                src={art.portrait[speaker]}
-                alt={`${names[speaker]}的发言立绘`}
-                initial={reduced ? false : { opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -5, transition: { duration: reduced ? 0 : 0.41 } }}
-                transition={{ duration: reduced ? 0 : 0.71 }}
-              />
-            </AnimatePresence>
-          </div>
-          <div className="speech-paper" data-speaker={voice}>
-            <strong>{names[voice]}</strong>
-            <small>
-              {duties[voice]}
-              {caption.via === "model" ||
-              caption.via === "fallback" ||
-              (caption.via === "local" && labelLocal) ? (
-                <span className="voice-source">
-                  {caption.via === "model"
-                    ? "模型回复"
-                    : caption.via === "fallback"
-                      ? "本机兜底"
-                      : "本机回复"}
-                </span>
-              ) : null}
-            </small>
-            <p>{caption.text}</p>
-          </div>
-        </div>
-      )}
+      <Entrance settled={settled || !!speaker || !!reduced} />
+      <div className="table-ensemble" inert={!speaker} aria-hidden={!speaker}>
+        {seats.map((pet) => (
+          <button
+            type="button"
+            key={pet}
+            className="bench-seat"
+            data-speaker={pet}
+            data-active={speaker === pet}
+            aria-label={`和${names[pet]}说句话`}
+            title={`把话递给${names[pet]}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onAddress(pet)}
+          >
+            <img className="pose-rest" src={art.resting[pet]} alt="" draggable={false} />
+            <img className="pose-talk" src={art.portrait[pet]} alt="" draggable={false} />
+            <MessageSquareText
+              className="seat-voice"
+              size={17}
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+          </button>
+        ))}
+        <img className="bench-table" src={art.table} alt="" draggable={false} />
+      </div>
     </div>
   );
 }
